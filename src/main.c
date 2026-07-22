@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 
     ret_val = EXIT_FAILURE;
     err     = p101_error_create(false);
-    env     = p101_env_create(err, true, NULL);
+    env     = p101_env_create(err, NULL);
     p101_memset(env, &args, 0, sizeof(args));
     parse_arguments(env, err, argc, argv, &args);
 
@@ -69,6 +69,9 @@ done:
         fprintf(stderr, "%s\n", p101_error_get_message(err));
         ret_val = EXIT_FAILURE;
     }
+
+    p101_env_destroy(env);
+    p101_error_destroy(err);
 
     return ret_val;
 }

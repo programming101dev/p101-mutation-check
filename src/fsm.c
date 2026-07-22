@@ -22,7 +22,7 @@ enum states
 int run_fsm(const struct p101_env *env, struct p101_error *err, const struct arguments *args)
 {
     struct p101_error                *fsm_err;
-    const struct p101_env            *fsm_env;
+    struct p101_env                  *fsm_env;
     struct p101_fsm_info             *fsm;
     p101_fsm_state_t                  from_state;
     p101_fsm_state_t                  to_state;
@@ -36,8 +36,19 @@ int run_fsm(const struct p101_env *env, struct p101_error *err, const struct arg
 
     P101_TRACE(env);
     fsm_err = p101_error_create(args->fsm_verbose);
-    fsm_env = p101_env_create(fsm_err, true, NULL);
-    fsm     = p101_fsm_info_create(env, err, "fsm", fsm_env, fsm_err, NULL);
+    fsm_env = p101_env_create(fsm_err, NULL);
+
+    if(p101_error_has_error(fsm_err))
+    {
+        goto done;
+    }
+
+    fsm = p101_fsm_info_create(env, err, "fsm", fsm_env, fsm_err, NULL);
+
+    if(p101_error_has_error(fsm_err))
+    {
+        goto done;
+    }
 
     if(p101_error_has_error(err))
     {
@@ -61,8 +72,10 @@ done:
         const char *msg = p101_error_get_message(fsm_err);
 
         P101_ERROR_RAISE_USER(err, msg, ERR_FSM);
-        p101_error_reset(fsm_err);
     }
+
+    p101_env_destroy(fsm_env);
+    p101_error_destroy(fsm_err);
 
     return EXIT_SUCCESS;
 }

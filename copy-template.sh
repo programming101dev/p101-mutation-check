@@ -21,12 +21,18 @@ COPY_ITEMS=(
   "build.sh"
   "build-all.sh"
   "change-compiler.sh"
+  "clean.sh"
   "check-compilers.sh"
   "check-env.sh"
   "create-links.sh"
   "move.sh"
   "CMakeLists.txt"
   "config.cmake"
+  "coverage.txt"
+  "profile.txt"
+  "coverage-report.sh"
+  "profile-report.sh"
+  "report.sh"
   "generate-flags.sh"
   "README.md"
   "src"
@@ -46,6 +52,9 @@ usage() {
   echo "  -q  quiet mode"
   exit 2
 }
+
+# --help / -h -> usage, exit 0 (P101 uniform CLI help)
+case " $* " in *" --help "*|*" -h "*) ( usage ) || true; exit 0 ;; esac
 
 while getopts ":fnq" opt; do
   case "$opt" in
@@ -188,6 +197,20 @@ done
 # Initialize per destination if .flags is not present.
 # You have .flags in LINK_ITEMS. If you want per-project .flags, move it
 # from LINK_ITEMS to COPY_ITEMS and keep this block.
+# The shared CMakeLists sources helper scripts from cmake/. In the workspace
+# that is a symlink to scripts/cmake/, but a STANDALONE project has no scripts/
+# sibling to link to, so copy the helpers in as REAL files (dereference the
+# symlink). Without this CMake aborts: "p101 helper scripts not found".
+if [ -e "$src_root/cmake" ] && [ ! -e "$dest_dir/cmake/FailIfCppcheckDiagnostics.cmake" ]; then
+  if [ "$DRYRUN" -eq 1 ]; then
+    say "cp -RL cmake/ helpers -> $dest_dir/cmake"
+  else
+    mkdir -p "$dest_dir/cmake"
+    cp -RL "$src_root/cmake/." "$dest_dir/cmake/" 2>/dev/null || cp -R "$src_root/cmake/." "$dest_dir/cmake/"
+    say "materialized cmake/ helper scripts"
+  fi
+fi
+
 pushd "$dest_dir" >/dev/null
 if [ ! -e ".flags" ] && [ ! -L ".flags" ]; then
   if [ "$DRYRUN" -eq 1 ]; then

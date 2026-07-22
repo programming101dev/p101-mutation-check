@@ -3,6 +3,15 @@
 # Exit the script if any command fails
 set -e
 
+# --help / -h -> description, exit 0 (P101 uniform CLI help)
+case " $* " in
+  *" --help "*|*" -h "*)
+    cat <<'P101_USAGE'
+generate-flags.sh — takes no command-line options; run with no arguments.
+P101_USAGE
+    exit 0 ;;
+esac
+
 # Function to check if a flag is supported by the compiler
 is_flag_supported()
 {

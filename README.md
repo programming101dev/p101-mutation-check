@@ -98,3 +98,29 @@ The files.txt file contains:
 <executable> <source files> <header files> <libraries>
 
 When you need to add/removes files to/from the project you must rerun the 4 steps above. 
+
+
+## Commands (cheat-sheet)
+
+Configure a compiler, then build:
+
+    ./change-compiler.sh -c gcc-16       # or just: ./change-compiler.sh gcc-16
+    ./build.sh                           # add -q to hide the per-file command dump
+    ./change-compiler.sh --help          # lists the compilers detected on this machine
+
+Opt-in instrumentation (chosen at configure time):
+
+    ./change-compiler.sh -c clang -s address,undefined   # sanitizers
+    ./change-compiler.sh -c gcc-16 --coverage            # code coverage (gcov)
+    ./change-compiler.sh -c gcc-16 --profile             # profiling (gprof, where supported)
+
+Reports (after ./build.sh):
+
+    ./report.sh coverage -- <your args>   # -> coverage-<cc>/index.html
+    ./report.sh profile  -- <your args>   # -> profile-<cc>/  (Instruments on macOS, perf on Linux)
+    ./coverage-report.sh --report-only    # report .gcda accumulated from your own runs, no re-run
+
+Housekeeping:
+
+    ./clean.sh          # remove build-/coverage-/profile- output (-n previews)
+    <script> --help     # every script supports --help
