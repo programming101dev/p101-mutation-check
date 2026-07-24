@@ -90,8 +90,7 @@ static void parse_arguments(const struct p101_env *env, struct p101_error *err, 
         {
             case 'h':
             {
-                P101_ERROR_RAISE_USER(err, NULL, ERR_USAGE);
-                break;
+                usage(env, argv[0], EXIT_SUCCESS, NULL);
             }
             case 'v':
             {
@@ -233,10 +232,11 @@ _Noreturn static void usage(const struct p101_env *env, const char *program_name
         fprintf(stderr, "%s\n\n", message);
     }
 
-    fprintf(stderr, "Usage: %s [-h] [-v] -d <delay>\n", program_name);
+    fprintf(stderr, "Usage: %s [-h] [-v] [-V] -d <delay>\n", program_name);
     fputs("Options:\n", stderr);
     fputs("  -h                Display this help message and exit\n", stderr);
     fputs("  -v                Enable verbose tracing\n", stderr);
+    fputs("  -V                Enable FSM state-change notifiers\n", stderr);
     fputs("  -d <delay>        delay in seconds (required)\n", stderr);
     exit(exit_code);
 }

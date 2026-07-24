@@ -19,11 +19,13 @@ COPY_ITEMS=(
   ".clang-format"
   ".gitignore"
   "build.sh"
+  "check.sh"
   "build-all.sh"
   "change-compiler.sh"
   "clean.sh"
   "check-compilers.sh"
   "check-env.sh"
+  "doctor.sh"
   "create-links.sh"
   "move.sh"
   "CMakeLists.txt"
@@ -33,8 +35,12 @@ COPY_ITEMS=(
   "coverage-report.sh"
   "profile-report.sh"
   "report.sh"
-  "generate-flags.sh"
   "README.md"
+  "test.sh"
+  "test-all.sh"
+  "test"
+  "fuzz.sh"
+  "fuzz"
   "src"
   "include"
 )
@@ -214,11 +220,10 @@ fi
 pushd "$dest_dir" >/dev/null
 if [ ! -e ".flags" ] && [ ! -L ".flags" ]; then
   if [ "$DRYRUN" -eq 1 ]; then
-    say "./check-compilers.sh && ./generate-flags.sh"
+    say "./check-compilers.sh (flags come from the workspace: run setup.sh)"
   else
     say "initializing compiler flags"
     ./check-compilers.sh
-    ./generate-flags.sh
   fi
 else
   say ".flags present, skip initialization"

@@ -23,7 +23,7 @@ int run_fsm(const struct p101_env *env, struct p101_error *err, const struct arg
 {
     struct p101_error                *fsm_err;
     struct p101_env                  *fsm_env;
-    struct p101_fsm_info             *fsm;
+    struct p101_fsm_info             *fsm = NULL;
     p101_fsm_state_t                  from_state;
     p101_fsm_state_t                  to_state;
     static struct p101_fsm_transition transitions[] = {
@@ -77,17 +77,20 @@ done:
     p101_env_destroy(fsm_env);
     p101_error_destroy(fsm_err);
 
+    if(p101_error_has_error(err))
+    {
+        return EXIT_FAILURE;
+    }
+
     return EXIT_SUCCESS;
 }
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 static p101_fsm_state_t a(const struct p101_env *env, struct p101_error *err, void *arg)    // cppcheck-suppress constParameterCallback
 {
     const unsigned int *delay;
 
     P101_TRACE(env);
+    (void)err;
     delay = (unsigned int *)arg;
     printf("a called\n");
     sleep(*delay);
@@ -95,16 +98,12 @@ static p101_fsm_state_t a(const struct p101_env *env, struct p101_error *err, vo
     return B;
 }
 
-#pragma GCC diagnostic pop
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
 static p101_fsm_state_t b(const struct p101_env *env, struct p101_error *err, void *arg)    // cppcheck-suppress constParameterCallback
 {
     const unsigned int *delay;
 
     P101_TRACE(env);
+    (void)err;
     delay = (unsigned int *)arg;
     printf("b called\n");
     sleep(*delay);
@@ -112,16 +111,12 @@ static p101_fsm_state_t b(const struct p101_env *env, struct p101_error *err, vo
     return C;
 }
 
-#pragma GCC diagnostic pop
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
 static p101_fsm_state_t c(const struct p101_env *env, struct p101_error *err, void *arg)    // cppcheck-suppress constParameterCallback
 {
     const unsigned int *delay;
 
     P101_TRACE(env);
+    (void)err;
     delay = (unsigned int *)arg;
     printf("c called\n");
     sleep(*delay);
@@ -129,40 +124,27 @@ static p101_fsm_state_t c(const struct p101_env *env, struct p101_error *err, vo
     return P101_FSM_EXIT;
 }
 
-#pragma GCC diagnostic pop
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
 static void will_change_state_notifier_func(const struct p101_env *env, struct p101_error *err, const struct p101_fsm_info *info, p101_fsm_state_t from_state_id, p101_fsm_state_t to_state_id)    // cppcheck-suppress constParameterCallback
 {
     P101_TRACE(env);
+    (void)err;
     printf("%s will change from %d to %d\n", p101_fsm_info_get_name(env, info), from_state_id, to_state_id);
 }
 
-#pragma GCC diagnostic pop
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
-static void did_change_state_notifier_func(const struct p101_env *env, struct p101_error *err, const struct p101_fsm_info *info, p101_fsm_state_t from_state_id, p101_fsm_state_t to_state_id,    // cppcheck-suppress constParameterCallback
-                                           p101_fsm_state_t next_state_id)
+static void did_change_state_notifier_func(const struct p101_env *env, struct p101_error *err, const struct p101_fsm_info *info, p101_fsm_state_t from_state_id, p101_fsm_state_t to_state_id,
+                                           p101_fsm_state_t next_state_id)    // cppcheck-suppress constParameterCallback
 {
     P101_TRACE(env);
+    (void)err;
+    (void)next_state_id;
     printf("%s did change from %d to %d\n", p101_fsm_info_get_name(env, info), from_state_id, to_state_id);
 }
-
-#pragma GCC diagnostic pop
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 static p101_fsm_state_t bad_change_state_notifier_func(const struct p101_env *env, struct p101_error *err, const struct p101_fsm_info *info, p101_fsm_state_t from_state_id, p101_fsm_state_t to_state_id)    // cppcheck-suppress constParameterCallback
 {
     P101_TRACE(env);
+    (void)err;
     printf("%s can't change from %d to %d\n", p101_fsm_info_get_name(env, info), from_state_id, to_state_id);
 
     return to_state_id;
 }
-
-#pragma GCC diagnostic pop
