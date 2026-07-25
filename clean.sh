@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# clean.sh — remove this project's build / coverage / profile output for a
-# clean slate. Never touches source (src/, include/, config.cmake, *.sh).
+# clean.sh — remove ALL of this project's transient output for a clean slate:
+# every build tree (main, test, fuzz, debug), the coverage/profile output, the
+# fuzzer's crash artifacts, and the generated compile_commands.json symlink.
+# Never touches source (src/, include/, test/*.c, config.cmake, *.sh) or the
+# committed fuzz corpus (fuzz/corpus/). Safe to re-run.
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
@@ -8,10 +11,15 @@ usage() {
   cat <<'USAGE'
 Usage: ./clean.sh [-n|--dry-run]
   Removes generated output only:
-    build-<cc>/ coverage-<cc>/ profile-<cc>/ cmake-build-*/  (and plain build/)
-    .last-build-dir
+    build/ build-<cc>/ cmake-build-*/          (main build trees)
+    test/build/ test/build-<cc>/               (unit-test build trees)
+    fuzz/build-<cc>/ fuzz/artifacts/ fuzz/findings/  (fuzzer builds, crashes, discovered corpus)
+    debug/ debug-<cc>/                         (debug.sh builds)
+    coverage/ coverage-<cc>/ profile/ profile-<cc>/
+    .last-build-dir  compile_commands.json     (state + generated symlink)
     stray *.gcda *.gcno *.gcov *.su *.ci gmon.out perf.data coverage.html
-  Source and scripts are never touched. Safe to re-run.
+  Source, scripts, and the committed fuzz corpus (fuzz/corpus/) are never
+  touched. Safe to re-run.
   -n, --dry-run   list what would be removed; delete nothing.
 USAGE
 }
@@ -23,12 +31,19 @@ if [[ "${1-}" == "-n" || "${1-}" == "--dry-run" ]]; then dry=1; fi
 shopt -s nullglob
 
 dirs=()
-for d in build build-* coverage coverage-* profile profile-* cmake-build-*; do
+for d in build build-* cmake-build-* \
+         test/build test/build-* \
+         fuzz/build-* fuzz/artifacts fuzz/findings \
+         debug debug-* \
+         coverage coverage-* profile profile-*; do
   if [[ -d "$d" ]]; then dirs+=("$d"); fi
 done
+
 files=()
-for f in .last-build-dir gmon.out perf.data coverage.html *.gcda *.gcno *.gcov *.su *.ci; do
-  if [[ -f "$f" ]]; then files+=("$f"); fi
+for f in .last-build-dir compile_commands.json gmon.out perf.data coverage.html \
+         *.gcda *.gcno *.gcov *.su *.ci; do
+  # -L catches the (possibly dangling) compile_commands.json symlink too.
+  if [[ -f "$f" || -L "$f" ]]; then files+=("$f"); fi
 done
 
 targets=( ${dirs[@]+"${dirs[@]}"} ${files[@]+"${files[@]}"} )

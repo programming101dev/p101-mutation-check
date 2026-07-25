@@ -27,7 +27,6 @@ COPY_ITEMS=(
   "check-env.sh"
   "doctor.sh"
   "create-links.sh"
-  "move.sh"
   "CMakeLists.txt"
   "config.cmake"
   "coverage.txt"
@@ -36,10 +35,12 @@ COPY_ITEMS=(
   "profile-report.sh"
   "report.sh"
   "README.md"
+  "commands.md"
   "test.sh"
   "test-all.sh"
   "test"
   "fuzz.sh"
+  "debug.sh"
   "fuzz"
   "src"
   "include"
@@ -217,17 +218,18 @@ if [ -e "$src_root/cmake" ] && [ ! -e "$dest_dir/cmake/FailIfCppcheckDiagnostics
   fi
 fi
 
-pushd "$dest_dir" >/dev/null
-if [ ! -e ".flags" ] && [ ! -L ".flags" ]; then
-  if [ "$DRYRUN" -eq 1 ]; then
-    say "./check-compilers.sh (flags come from the workspace: run setup.sh)"
-  else
+if [ "$DRYRUN" -eq 1 ]; then
+  # Dry run never created $dest_dir, so do not try to enter it.
+  say "./check-compilers.sh (flags come from the workspace: run setup.sh)"
+else
+  pushd "$dest_dir" >/dev/null
+  if [ ! -e ".flags" ] && [ ! -L ".flags" ]; then
     say "initializing compiler flags"
     ./check-compilers.sh
+  else
+    say ".flags present, skip initialization"
   fi
-else
-  say ".flags present, skip initialization"
+  popd >/dev/null
 fi
-popd >/dev/null
 
 say "done."

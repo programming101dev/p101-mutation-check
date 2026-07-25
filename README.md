@@ -1,126 +1,66 @@
-# template-c Repository Guide
+# template-c-program
 
-Welcome to the `c template` repository. This guide will help you set up and run the provided scripts.
+`template-c-program` is a small C program driven by a finite-state machine — it validates a required `-d <delay>` argument, then runs a simple FSM. Like every Programming 101 template it ships with the full
+quality toolchain already wired in — a strict analysis build, the sanitizers,
+unit tests, a fuzzer, and coverage — so any project you start from it is
+correct-by-construction from the first commit. `commands.md` is the one-line
+reference for every script; this file is the walkthrough.
 
-## **Table of Contents**
+## Quick start
 
-1. [Cloning the Repository](#cloning-the-repository)
-2. [Prerequisites](#Prerequisites)
-3. [Running the `generate-cmakelists.sh` Script](#running-the-generate-cmakelistssh-script)
-4. [Running the `change-compiler.sh` Script](#running-the-change-compilersh-script)
-5. [Running the `build.sh` Script](#running-the-buildsh-script)
-5. [Running the `build-all.sh` Script](#running-the-build-allsh-script)
-6. [Copy the template to start a new project](#copy-the-template-to-start-a-new-project)
+Configure a compiler once, then run the gate:
 
-## **Cloning the Repository**
+    ./change-compiler.sh -c clang     # pick the compiler and configure the build
+    ./check.sh                       # format + strict build + tests + fuzz smoke -> one PASS/FAIL
 
-Clone the repository using the following command:
+`./change-compiler.sh --help` lists the compilers detected on this machine.
 
-```bash
-git clone https://github.com/programming101dev/template-c.git
-```
+## The workflow
 
-Navigate to the cloned directory:
+1. **Configure** — `./change-compiler.sh -c clang` picks the compiler and
+   configures the build. Run it again any time to switch compilers (e.g.
+   `./change-compiler.sh -c gcc`).
+2. **Build** — `./build.sh` compiles through the strict analysis pipeline:
+   clang-format check, clang-tidy, cppcheck, the Clang static analyzer,
+   hundreds of warnings under `-Werror`, and the sanitizers baked in. Add `-q`
+   to hide the per-file command dump.
+3. **Test** — `./test.sh` builds and runs the Unity test suite; `./test-all.sh`
+   runs it across every supported compiler.
+4. **Check** — `./check.sh` is the one command to run before you submit: it does
+   the format check, the strict build, the tests, and a short fuzz smoke run,
+   then prints a single PASS/FAIL and exits non-zero on any failure. Add
+   `--cov <pct>` to also fail when test coverage is below a threshold.
+5. **Fuzz** — `./fuzz.sh` runs the libFuzzer target (coverage-guided, sanitizers
+   on) and prints PASS/FAIL. Here it fuzzes the program's own argument parser (`parse_arguments`), so it exercises real code you can break.
+6. **Coverage** — `./coverage-report.sh` builds an HTML coverage report; add
+   `--min <pct>` to fail below a threshold.
+7. **Diagnose** — when something looks wrong, `./doctor.sh` reports what actually
+   works on this machine for this project.
 
-```bash
-cd template-c
-```
+## Formatting
 
-Ensure the scripts are executable:
+    ./build.sh -f     # apply clang-tidy --fix + clang-format, in place
+    ./build.sh -C     # check formatting only, no build (non-zero if unclean)
 
-```bash
-chmod +x *.sh
-```
+## Adding or removing files
 
-## **Prerequisites**
+This template uses a fixed strict `CMakeLists.txt` driven by `config.cmake` —
+there is no generated makefile to edit. When you add or remove a source or
+header, edit the lists in `config.cmake` (`main_SOURCES`, `main_HEADERS`, and
+`main_LINK_LIBRARIES` for libraries), then re-configure and build:
 
-- to ensure you have all of the required tools installed, run:
-```bash
-./check-env.sh
-```
+    ./change-compiler.sh -c clang
+    ./build.sh
 
-If you are missing tools follow these [instructions](https://docs.google.com/document/d/1ZPqlPD1mie5iwJ2XAcNGz7WeA86dTLerFXs9sAuwCco/edit?usp=drive_link).
+## Start a new project from this template
 
-## **Running the generate-cmakelists.sh Script**
+    ./copy-template.sh <destination-directory>
 
-You will need to create the CMakeLists.txt file:
+This copies everything you need — the sources, the build system, and every
+script — into a fresh project directory.
 
-```bash
-./generate-cmakelists.sh
-```
+## Prerequisites
 
-## **Running the change-compiler.sh Script**
-
-Tell CMake which compiler you want to use:
-
-```bash
-./change-compiler.sh -c <compiler>
-```
-
-To the see the list of possible compilers:
-
-```bash
-cat supported_cxx_compilers.txt
-```
-
-## **Running the build.sh Script**
-
-To build the program run:
-
-```bash
-./build.sh
-```
-
-## **Running the build-all.sh Script**
-
-To build the program with all compilers run:
-
-```bash
-./build-all.sh
-```
-
-## **Copy the template to start a new project**
-
-To create a new project from the template, run:
-
-```bash
-./copy-template.sh <desitnation directory>
-```
-
-This will copy all of the files needed to start a new project.
-
-1. Edit the files.txt
-2. run ./generate-cmakelists.sh
-3. run ./change-compiler.sh -c <compiler>
-4. run ./build.sh
-
-The files.txt file contains:
-<executable> <source files> <header files> <libraries>
-
-When you need to add/removes files to/from the project you must rerun the 4 steps above. 
-
-
-## Commands (cheat-sheet)
-
-Configure a compiler, then build:
-
-    ./change-compiler.sh -c gcc-16       # or just: ./change-compiler.sh gcc-16
-    ./build.sh                           # add -q to hide the per-file command dump
-    ./change-compiler.sh --help          # lists the compilers detected on this machine
-
-Opt-in instrumentation (chosen at configure time):
-
-    ./change-compiler.sh -c clang -s address,undefined   # sanitizers
-    ./change-compiler.sh -c gcc-16 --coverage            # code coverage (gcov)
-    ./change-compiler.sh -c gcc-16 --profile             # profiling (gprof, where supported)
-
-Reports (after ./build.sh):
-
-    ./report.sh coverage -- <your args>   # -> coverage-<cc>/index.html
-    ./report.sh profile  -- <your args>   # -> profile-<cc>/  (Instruments on macOS, perf on Linux)
-    ./coverage-report.sh --report-only    # report .gcda accumulated from your own runs, no re-run
-
-Housekeeping:
-
-    ./clean.sh          # remove build-/coverage-/profile- output (-n previews)
-    <script> --help     # every script supports --help
+The Programming 101 setup scripts install everything these tools need. If a
+script reports a missing tool, run `./doctor.sh` to see exactly what this
+project can and can't do on your machine, and re-run the setup if needed.

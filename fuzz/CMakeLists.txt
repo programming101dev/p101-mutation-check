@@ -33,14 +33,14 @@ endforeach ()
 # the fuzzer's inputs are checked for memory errors and UB.
 set(_FUZZ_FLAGS -fsanitize=fuzzer,address,undefined -g -O1)
 
-add_executable(fuzz_parse fuzz_parse.c "${CMAKE_CURRENT_SOURCE_DIR}/../src/fsm.c")
+add_executable(fuzz fuzz_parse.c "${CMAKE_CURRENT_SOURCE_DIR}/../src/fsm.c")
 
 # Reach the static parser without editing src/: rename the program's main() out
 # of libFuzzer's way, and redirect exit() (usage() is _Noreturn) so the -h path
 # is a longjmp, not a fake crash.
-target_compile_definitions(fuzz_parse PRIVATE main=p101_unused_main exit=p101_fuzz_exit)
+target_compile_definitions(fuzz PRIVATE main=p101_unused_main exit=p101_fuzz_exit)
 
-target_include_directories(fuzz_parse PRIVATE ${_P101_INC_DIRS} "${CMAKE_CURRENT_SOURCE_DIR}/../include")
-target_compile_options(fuzz_parse PRIVATE ${_FUZZ_FLAGS})
-target_link_options(fuzz_parse PRIVATE ${_FUZZ_FLAGS})
-target_link_libraries(fuzz_parse PRIVATE ${_P101_RESOLVED} m)
+target_include_directories(fuzz PRIVATE ${_P101_INC_DIRS} "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_compile_options(fuzz PRIVATE ${_FUZZ_FLAGS})
+target_link_options(fuzz PRIVATE ${_FUZZ_FLAGS})
+target_link_libraries(fuzz PRIVATE ${_P101_RESOLVED} m)

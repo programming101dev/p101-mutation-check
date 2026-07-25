@@ -13,6 +13,8 @@ Usage: ./coverage-report.sh [--report-only] [-- <program args>]
   Builds coverage-<compiler>/index.html with gcovr from the coverage data in the
   main build AND the test build (test/build-<cc>) if either exists.
 
+  --min <pct>         fail (non-zero exit) if line coverage is below <pct>.
+  --no-open           do not open the HTML report in a browser (hooks/CI).
   --report-only (-R)  don't run the main target(s); just report accumulated
                       .gcda (e.g. after ./test.sh --coverage, or several runs).
 
@@ -24,10 +26,14 @@ USAGE
 case " $* " in *" --help "*|*" -h "*) usage; exit 0 ;; esac
 
 report_only=0
+min_cov=""
+no_open=0
 prog_args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --report-only|-R) report_only=1; shift ;;
+    --min|--fail-under) min_cov="${2:?}"; shift 2 ;;
+    --no-open)        no_open=1; shift ;;
     --)               shift; prog_args=("$@"); break ;;
     *) echo "Unknown option: $1" >&2; usage; exit 2 ;;
   esac
@@ -112,7 +118,32 @@ gcovr --gcov-executable "$gcov_tool" -r . "${cov_dirs[@]}" --decisions --html-de
 gcovr --gcov-executable "$gcov_tool" -r . "${cov_dirs[@]}" --decisions > "$cov_out/summary.txt" 2>/dev/null || true
 echo "---- summary ----"; cat "$cov_out/summary.txt" 2>/dev/null || true
 
-if   command -v open     >/dev/null 2>&1; then open "$cov_out/index.html" >/dev/null 2>&1 || true
-elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$cov_out/index.html" >/dev/null 2>&1 || true
+if [[ $no_open -eq 0 ]]; then
+  if   command -v open     >/dev/null 2>&1; then open "$cov_out/index.html" >/dev/null 2>&1 || true
+  elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$cov_out/index.html" >/dev/null 2>&1 || true
+  fi
 fi
 echo "Report: $(pwd)/$cov_out/index.html"
+
+# --- coverage gate (opt-in via --min) ------------------------------------
+# gcovr --fail-under-line does the enforcing: exit 0 if line coverage >= the
+# threshold, non-zero if under. We surface the measured % from --print-summary
+# and turn it into a clear PASS/FAIL with a matching exit code (hook/CI ready).
+if [[ -n "$min_cov" ]]; then
+  set +e
+  gate_out="$(gcovr --gcov-executable "$gcov_tool" -r . "${cov_dirs[@]}" --print-summary --fail-under-line "$min_cov" 2>&1)"
+  gate_rc=$?
+  set -e
+  measured="$(printf '%s\n' "$gate_out" | grep -iE '^lines:' | grep -oE '[0-9]+(\.[0-9]+)?' | head -1)"
+  _gl="======================================================================"
+  echo; echo "$_gl"
+  if [[ $gate_rc -eq 0 ]]; then
+    echo " COVERAGE PASS — lines ${measured:+${measured}% }>= ${min_cov}% threshold."
+    echo "$_gl"
+  else
+    echo " COVERAGE FAIL — lines ${measured:+${measured}% }< ${min_cov}% threshold." >&2
+    echo "   open $cov_out/index.html to see the uncovered lines." >&2
+    echo "$_gl" >&2
+    exit 1
+  fi
+fi
