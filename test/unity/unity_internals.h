@@ -50,7 +50,7 @@
 /* UNITY_NORETURN is only required if we have setjmp.h. */
 #ifndef UNITY_EXCLUDE_SETJMP_H
   #ifndef UNITY_NORETURN
-    #if defined(__cplusplus)
+    #ifdef __cplusplus
       #if __cplusplus >= 201103L
         #define UNITY_NORETURN [[ noreturn ]]
       #endif
@@ -75,7 +75,7 @@
         /* https://en.cppreference.com/w/c/language/_Noreturn */
         #define UNITY_NORETURN _Noreturn
       #else /* Using newer Windows SDK or not MSVC compiler */
-        #if defined(__GNUC__)
+        #ifdef __GNUC__
           /* The header <stdnoreturn.h> collides with __attribute(noreturn)__ from GCC. */
           #define UNITY_NORETURN _Noreturn
         #else
@@ -397,7 +397,7 @@ typedef UNITY_FLOAT_TYPE UNITY_FLOAT;
       !defined(UNITY_TIME_TYPE)
       /* If none any of these macros are defined then try to provide a default implementation */
 
-    #if defined(UNITY_CLOCK_MS)
+    #ifdef UNITY_CLOCK_MS
       /* This is a simple way to get a default implementation on platforms that support getting a millisecond counter */
       #define UNITY_TIME_TYPE UNITY_UINT
       #define UNITY_EXEC_TIME_START() Unity.CurrentTestStartTime = UNITY_CLOCK_MS()
@@ -408,7 +408,8 @@ typedef UNITY_FLOAT_TYPE UNITY_FLOAT;
         UnityPrintNumberUnsigned(execTimeMs); \
         UnityPrint(" ms)"); \
         }
-    #elif defined(_WIN32)
+    #else
+      #ifdef _WIN32
       #include <time.h>
       #define UNITY_TIME_TYPE clock_t
       #define UNITY_GET_TIME(t) t = (clock_t)((clock() * 1000) / CLOCKS_PER_SEC)
@@ -420,7 +421,8 @@ typedef UNITY_FLOAT_TYPE UNITY_FLOAT;
         UnityPrintNumberUnsigned(execTimeMs); \
         UnityPrint(" ms)"); \
         }
-    #elif defined(__unix__) || defined(__APPLE__)
+      #else
+        #if defined(__unix__) || defined(__APPLE__)
       #include <time.h>
       #define UNITY_TIME_TYPE struct timespec
       #define UNITY_GET_TIME(t) clock_gettime(CLOCK_MONOTONIC, &t)
@@ -433,8 +435,10 @@ typedef UNITY_FLOAT_TYPE UNITY_FLOAT;
         UnityPrintNumberUnsigned(execTimeMs); \
         UnityPrint(" ms)"); \
         } while(0)
+      #endif
     #endif
   #endif
+#endif
 #endif
 
 #ifndef UNITY_EXEC_TIME_START

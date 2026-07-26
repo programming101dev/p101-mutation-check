@@ -13,34 +13,36 @@
  *                            own main(); it is renamed aside. We never call it
  *                            -- we call parse_arguments() directly, so run_fsm()
  *                            never runs and nothing sleeps.
- *   -Dexit=p101_fuzz_exit    usage() (the -h / bad-usage path) is _Noreturn and
- *                            calls exit(). An exit() mid-iteration looks like a
- *                            crash and kills the whole run, so we redirect it
- *                            into a longjmp back here. This is option-agnostic:
- *                            it keeps working if you add or remove options.
+ *   -Dp101_exit=p101_fuzz_exit usage() (the -h / bad-usage path) is _Noreturn
+ *                              and calls p101_exit(). Redirect it into a
+ *                              longjmp back here so -h is a normal input, not
+ *                              the end of the fuzz process.
  *
  * src/fsm.c is compiled in only so the (unused) renamed main() can resolve
  * run_fsm() at link time.
  */
+#include <p101_c/p101_setjmp.h>
+#include <p101_c/p101_stdlib.h>
+#include <p101_c/p101_string.h>
 #include <setjmp.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* longjmp target for the redirected exit() -- see -Dexit in fuzz/CMakeLists.txt. */
+/* Jump target for the redirected p101_exit() -- see fuzz/CMakeLists.txt. */
 static jmp_buf g_fuzz_exit_jmp;
 
-/* The code under test. main -> p101_unused_main, exit -> p101_fuzz_exit (via -D). */
+/* The code under test. main -> p101_unused_main, p101_exit -> p101_fuzz_exit. */
 #include "../src/main.c"
 
-/* The redirected exit(): unwind back into the harness instead of terminating
- * the process. _Noreturn matches exit()'s contract (usage() is _Noreturn);
- * longjmp guarantees it never actually returns. */
-_Noreturn void p101_fuzz_exit(int code)
+/* The redirected p101_exit(): unwind back into the harness instead of terminating
+ * the process. _Noreturn matches p101_exit()'s contract (usage() is _Noreturn);
+ * p101_longjmp guarantees it never actually returns. */
+_Noreturn void p101_fuzz_exit(const struct p101_env *env, int code)
 {
     (void)code;
-    longjmp(g_fuzz_exit_jmp, 1);
+    p101_longjmp(env, g_fuzz_exit_jmp, 1);
 }
 
 #define FUZZ_MAX_ARGS 64
@@ -55,13 +57,16 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     struct p101_env   *env;
     struct arguments   args;
 
+    err = p101_error_create(false);
+    env = p101_env_create(err, NULL);
+
     /* getopt/argv need a writable, NUL-terminated C string. */
-    buf = (char *)malloc(size + 1);
+    buf = (char *)p101_malloc(env, err, size + 1);
     if(buf == NULL)
     {
-        return 0;
+        goto done;
     }
-    memcpy(buf, data, size);
+    p101_memcpy(env, buf, data, size);
     buf[size] = '\0';
 
     /* Carve the input into an argv, splitting on whitespace. argv[0] is a fixed
@@ -92,7 +97,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     argv[argc] = NULL;
 
     /* getopt keeps a global cursor across calls; reset it before every parse. */
-#if defined(__GLIBC__)
+#ifdef __GLIBC__
     optind = 0; /* glibc: 0 forces a full re-init */
 #else
     {
@@ -102,19 +107,18 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     }
 #endif
 
-    err = p101_error_create(false);
-    env = p101_env_create(err, NULL);
-    memset(&args, 0, sizeof(args));
+    p101_memset(env, &args, 0, sizeof(args));
 
-    /* If parse_arguments takes the -h path, usage()->exit()->longjmp lands here
-     * with a non-zero return -- a normal outcome, not a crash. */
-    if(setjmp(g_fuzz_exit_jmp) == 0)
+    /* If parse_arguments takes the -h path, usage()->p101_exit()->p101_longjmp lands
+     * here with a non-zero return -- a normal outcome, not a crash. */
+    if(p101_setjmp(env, g_fuzz_exit_jmp) == 0)
     {
         parse_arguments(env, err, argc, argv, &args);
     }
 
+done:
+    p101_free(env, buf);
     p101_env_destroy(env);
     p101_error_destroy(err);
-    free(buf);
     return 0;
 }

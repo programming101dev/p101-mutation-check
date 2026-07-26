@@ -1,18 +1,19 @@
 #include "arguments.h"
 #include "errors.h"
 #include "fsm.h"
-#include <ctype.h>
+#include <p101_c/p101_ctype.h>
+#include <p101_c/p101_stdio.h>
+#include <p101_c/p101_stdlib.h>
 #include <p101_c/p101_string.h>
 #include <p101_convert/integer.h>
 #include <p101_posix/p101_string.h>
 #include <p101_posix/p101_unistd.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 static void           parse_arguments(const struct p101_env *env, struct p101_error *err, int argc, char *argv[], struct arguments *args);
 static void           check_arguments(const struct p101_env *env, struct p101_error *err, const struct arguments *args);
 static void           convert_arguments(const struct p101_env *env, struct p101_error *err, struct arguments *args);
-_Noreturn static void usage(const struct p101_env *env, const char *program_name, int exit_code, const char *message);
+_Noreturn static void usage(const struct p101_env *env, struct p101_error *err, const char *program_name, int exit_code, const char *message);
 
 #define MSG_LEN 256    // NOLINT(cppcoreguidelines-macro-to-enum, modernize-macro-to-enum)
 
@@ -63,10 +64,10 @@ done:
             const char *msg;
 
             msg = p101_error_get_message(err);
-            usage(env, argv[0], EXIT_FAILURE, msg);
+            usage(env, err, argv[0], EXIT_FAILURE, msg);
         }
 
-        fprintf(stderr, "%s\n", p101_error_get_message(err));
+        p101_fprintf(env, err, stderr, "%s\n", p101_error_get_message(err));
         ret_val = EXIT_FAILURE;
     }
 
@@ -90,7 +91,7 @@ static void parse_arguments(const struct p101_env *env, struct p101_error *err, 
         {
             case 'h':
             {
-                usage(env, argv[0], EXIT_SUCCESS, NULL);
+                usage(env, err, argv[0], EXIT_SUCCESS, NULL);
             }
             case 'v':
             {
@@ -121,7 +122,7 @@ static void parse_arguments(const struct p101_env *env, struct p101_error *err, 
             {
                 char msg[MSG_LEN];
 
-                snprintf(msg, sizeof msg, "Option '-%c' requires an argument.", optopt ? optopt : '?');
+                p101_snprintf(env, err, msg, sizeof msg, "Option '-%c' requires an argument.", optopt ? optopt : '?');
                 P101_ERROR_RAISE_USER(err, msg, ERR_USAGE);
                 break;
             }
@@ -129,13 +130,13 @@ static void parse_arguments(const struct p101_env *env, struct p101_error *err, 
             {
                 char msg[MSG_LEN];
 
-                if(isprint(optopt))
+                if(p101_isprint(env, optopt))
                 {
-                    snprintf(msg, sizeof msg, "Unknown option '-%c'.", optopt);
+                    p101_snprintf(env, err, msg, sizeof msg, "Unknown option '-%c'.", optopt);
                 }
                 else
                 {
-                    snprintf(msg, sizeof msg, "Unknown option character 0x%02X.", (unsigned)(unsigned char)optopt);
+                    p101_snprintf(env, err, msg, sizeof msg, "Unknown option character 0x%02X.", (unsigned)(unsigned char)optopt);
                 }
 
                 P101_ERROR_RAISE_USER(err, msg, ERR_USAGE);
@@ -145,7 +146,7 @@ static void parse_arguments(const struct p101_env *env, struct p101_error *err, 
             {
                 char msg[MSG_LEN];
 
-                snprintf(msg, sizeof msg, "Internal error: unhandled option '-%c' returned by getopt.", isprint(opt) ? opt : '?');
+                p101_snprintf(env, err, msg, sizeof msg, "Internal error: unhandled option '-%c' returned by getopt.", p101_isprint(env, opt) ? opt : '?');
                 P101_ERROR_RAISE_USER(err, msg, ERR_USAGE);
                 break;
             }
@@ -160,7 +161,7 @@ static void parse_arguments(const struct p101_env *env, struct p101_error *err, 
             size_t off;
 
             off = 0;
-            off += (size_t)snprintf(msg + off, sizeof msg - off, "Unexpected argument%s:", (argc - optind) > 1 ? "s" : "");
+            off += (size_t)p101_snprintf(env, err, msg + off, sizeof msg - off, "Unexpected argument%s:", (argc - optind) > 1 ? "s" : "");
 
             for(int i = optind; i < argc && off < sizeof msg; ++i)
             {
@@ -223,20 +224,20 @@ done:
     return;
 }
 
-_Noreturn static void usage(const struct p101_env *env, const char *program_name, int exit_code, const char *message)
+_Noreturn static void usage(const struct p101_env *env, struct p101_error *err, const char *program_name, int exit_code, const char *message)
 {
     P101_TRACE(env);
 
     if(message)
     {
-        fprintf(stderr, "%s\n\n", message);
+        p101_fprintf(env, err, stderr, "%s\n\n", message);
     }
 
-    fprintf(stderr, "Usage: %s [-h] [-v] [-V] -d <delay>\n", program_name);
-    fputs("Options:\n", stderr);
-    fputs("  -h                Display this help message and exit\n", stderr);
-    fputs("  -v                Enable verbose tracing\n", stderr);
-    fputs("  -V                Enable FSM state-change notifiers\n", stderr);
-    fputs("  -d <delay>        delay in seconds (required)\n", stderr);
-    exit(exit_code);
+    p101_fprintf(env, err, stderr, "Usage: %s [-h] [-v] [-V] -d <delay>\n", program_name);
+    p101_fputs(env, err, "Options:\n", stderr);
+    p101_fputs(env, err, "  -h                Display this help message and exit\n", stderr);
+    p101_fputs(env, err, "  -v                Enable verbose tracing\n", stderr);
+    p101_fputs(env, err, "  -V                Enable FSM state-change notifiers\n", stderr);
+    p101_fputs(env, err, "  -d <delay>        delay in seconds (required)\n", stderr);
+    p101_exit(env, exit_code);
 }

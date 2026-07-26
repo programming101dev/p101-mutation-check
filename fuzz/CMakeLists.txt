@@ -16,12 +16,21 @@ if (NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
 endif ()
 
 set(P101_LIBS p101_error p101_env p101_c p101_posix p101_unix p101_fsm p101_convert)
-set(_P101_INC_DIRS /usr/local/include /opt/homebrew/include /opt/local/include)
-set(_P101_LIB_DIRS /usr/local/lib /usr/local/lib64 /opt/homebrew/lib /opt/local/lib)
+set(P101_PUBLIC_INCLUDE_DIRS "" CACHE STRING "Extra p101 include dirs")
+set(P101_PUBLIC_LINK_DIRS "" CACHE STRING "Extra p101 link dirs")
+separate_arguments(P101_PUBLIC_INCLUDE_DIRS_LIST NATIVE_COMMAND "${P101_PUBLIC_INCLUDE_DIRS}")
+separate_arguments(P101_PUBLIC_LINK_DIRS_LIST NATIVE_COMMAND "${P101_PUBLIC_LINK_DIRS}")
+set(_P101_INC_DIRS ${P101_PUBLIC_INCLUDE_DIRS_LIST} /usr/local/include /opt/homebrew/include /opt/local/include)
+set(_P101_LIB_DIRS ${P101_PUBLIC_LINK_DIRS_LIST} /usr/local/lib /usr/local/lib64 /opt/homebrew/lib /opt/local/lib)
 
 set(_P101_RESOLVED "")
 foreach (_l IN LISTS P101_LIBS)
-    find_library(_P101_LIB_${_l} NAMES ${_l} PATHS ${_P101_LIB_DIRS})
+    unset(_P101_LIB_${_l} CACHE)
+    unset(_P101_LIB_${_l})
+    find_library(_P101_LIB_${_l} NAMES ${_l} PATHS ${_P101_LIB_DIRS} NO_DEFAULT_PATH)
+    if (NOT _P101_LIB_${_l})
+        find_library(_P101_LIB_${_l} NAMES ${_l})
+    endif ()
     if (_P101_LIB_${_l})
         list(APPEND _P101_RESOLVED "${_P101_LIB_${_l}}")
     else ()
@@ -38,7 +47,7 @@ add_executable(fuzz fuzz_parse.c "${CMAKE_CURRENT_SOURCE_DIR}/../src/fsm.c")
 # Reach the static parser without editing src/: rename the program's main() out
 # of libFuzzer's way, and redirect exit() (usage() is _Noreturn) so the -h path
 # is a longjmp, not a fake crash.
-target_compile_definitions(fuzz PRIVATE main=p101_unused_main exit=p101_fuzz_exit)
+target_compile_definitions(fuzz PRIVATE main=p101_unused_main p101_exit=p101_fuzz_exit)
 
 target_include_directories(fuzz PRIVATE ${_P101_INC_DIRS} "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 target_compile_options(fuzz PRIVATE ${_FUZZ_FLAGS})
