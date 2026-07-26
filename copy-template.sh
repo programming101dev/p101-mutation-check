@@ -4,6 +4,7 @@
 # Platforms: macOS, FreeBSD 13+, Linux.
 
 set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 # ---------- configuration -----------------------------------------------
 
@@ -220,7 +221,7 @@ fi
 
 if [ "$DRYRUN" -eq 1 ]; then
   # Dry run never created $dest_dir, so do not try to enter it.
-  say "./check-compilers.sh (flags come from the workspace: run setup.sh)"
+  say "./check-compilers.sh (initialize local compiler lists if .flags is absent)"
 else
   pushd "$dest_dir" >/dev/null
   if [ ! -e ".flags" ] && [ ! -L ".flags" ]; then
