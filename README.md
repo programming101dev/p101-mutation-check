@@ -2,7 +2,7 @@
 
 `template-c-program` is a small C program driven by a finite-state machine — it validates a required `-d <delay>` argument, then runs a simple FSM. Like every Programming 101 template it ships with the full
 quality toolchain already wired in — a strict analysis build, the sanitizers,
-unit tests, a fuzzer, and coverage — so any project you start from it is
+unit tests, a fuzzer, coverage, and the p101 doctor when installed — so any project you start from it is
 correct-by-construction from the first commit. `commands.md` is the one-line
 reference for every script; this file is the walkthrough.
 
@@ -11,7 +11,7 @@ reference for every script; this file is the walkthrough.
 Configure a compiler once, then run the gate:
 
     ./change-compiler.sh -c clang     # pick the compiler and configure the build
-    ./check.sh                       # format + strict build + tests + fuzz smoke -> one PASS/FAIL
+    ./check.sh                       # format + strict build + tests + fuzz smoke + p101 doctor -> one PASS/FAIL
 
 `./change-compiler.sh --help` lists the compilers detected on this machine.
 
@@ -27,15 +27,16 @@ Configure a compiler once, then run the gate:
 3. **Test** — `./test.sh` builds and runs the Unity test suite; `./test-all.sh`
    runs it across every supported compiler.
 4. **Check** — `./check.sh` is the one command to run before you submit: it does
-   the format check, the strict build, the tests, and a short fuzz smoke run,
-   then prints a single PASS/FAIL and exits non-zero on any failure. Add
-   `--cov <pct>` to also fail when test coverage is below a threshold.
+   the format check, the strict build, the tests, a short fuzz smoke run, and
+   `p101-doctor` when that tool is installed, then prints a single PASS/FAIL and
+   exits non-zero on any failure. Add `--cov <pct>` to also fail when test
+   coverage is below a threshold.
 5. **Fuzz** — `./fuzz.sh` runs the libFuzzer target (coverage-guided, sanitizers
    on) and prints PASS/FAIL. Here it fuzzes the program's own argument parser (`parse_arguments`), so it exercises real code you can break.
 6. **Coverage** — `./coverage-report.sh` builds an HTML coverage report; add
    `--min <pct>` to fail below a threshold.
-7. **Diagnose** — when something looks wrong, `./doctor.sh` reports what actually
-   works on this machine for this project.
+7. **Diagnose** — when the local toolchain looks wrong, `./doctor.sh` reports
+   what actually works on this machine for this project.
 
 ## Formatting
 

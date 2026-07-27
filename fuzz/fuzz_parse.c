@@ -1,25 +1,19 @@
 /*
  * libFuzzer harness for the template's OWN argument parser
- * (src/main.c: parse_arguments()). This fuzzes the code YOU write, not a
+ * (src/cli.c: parse_arguments()). This fuzzes the code YOU write, not a
  * library function.
  *
- * parse_arguments() is static, so we #include the whole main.c: that makes it
+ * parse_arguments() is static, so we #include the whole cli.c: that makes it
  * visible AND compiles it WITH the fuzzer instrumentation, which is what makes
  * this coverage-guided (watch "cov:" climb) instead of a blind black-box run.
  * Two collisions are handled by -D defines in fuzz/CMakeLists.txt, so nothing
  * in src/ has to change:
  *
- *   -Dmain=p101_unused_main  the program's main() would clash with libFuzzer's
- *                            own main(); it is renamed aside. We never call it
- *                            -- we call parse_arguments() directly, so run_fsm()
- *                            never runs and nothing sleeps.
  *   -Dp101_exit=p101_fuzz_exit usage() (the -h / bad-usage path) is _Noreturn
  *                              and calls p101_exit(). Redirect it into a
  *                              longjmp back here so -h is a normal input, not
  *                              the end of the fuzz process.
  *
- * src/fsm.c is compiled in only so the (unused) renamed main() can resolve
- * run_fsm() at link time.
  */
 #include <p101_c/p101_setjmp.h>
 #include <p101_c/p101_stdlib.h>
@@ -33,8 +27,8 @@
 /* Jump target for the redirected p101_exit() -- see fuzz/CMakeLists.txt. */
 static jmp_buf g_fuzz_exit_jmp;
 
-/* The code under test. main -> p101_unused_main, p101_exit -> p101_fuzz_exit. */
-#include "../src/main.c"
+/* The code under test. p101_exit -> p101_fuzz_exit. */
+#include "../src/cli.c"
 
 /* The redirected p101_exit(): unwind back into the harness instead of terminating
  * the process. _Noreturn matches p101_exit()'s contract (usage() is _Noreturn);
