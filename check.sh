@@ -12,7 +12,7 @@
 # NOTE: intentionally NOT `set -e`. We run each step, record pass/fail, and
 # report them all so you can fix everything in one pass, not one-at-a-time.
 set -uo pipefail
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 fuzz_secs=20
 do_fuzz=1
