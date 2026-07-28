@@ -107,6 +107,8 @@ else
 fi
 
 # 5) p101 source/runtime doctor — skip cleanly if p101-doctor is not installed -
+# Keep this block synced across the source templates; fresh template instances
+# must remain self-contained, so it intentionally lives inside each template.
 if [ "$do_p101_doctor" -eq 0 ]; then
   p101_doctor_st="SKIP (--no-p101-doctor)"
 elif ! command -v p101-doctor >/dev/null 2>&1; then
