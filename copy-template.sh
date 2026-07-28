@@ -4,7 +4,7 @@
 # Platforms: macOS, FreeBSD 13+, Linux.
 
 set -euo pipefail
-CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 
 # ---------- configuration -----------------------------------------------
 
@@ -79,19 +79,22 @@ shift $((OPTIND-1))
 dest_dir=$1
 
 say()  { [ "$QUIET" -eq 1 ] || echo "$@"; }
-warn() { echo "WARN: $@" >&2; }
-die()  { echo "ERROR: $@" >&2; exit 4; }
+warn() { printf 'WARN: %s\n' "$*" >&2; }
+die()  { printf 'ERROR: %s\n' "$*" >&2; exit 4; }
 
 # ---------- portable path helpers ---------------------------------------
 
-# Absolute path without relying on realpath or readlink -f.
+# Absolute path without relying on realpath or readlink -f. Missing final
+# components are retained, but ".." components are rejected by the caller.
 abspath() {
-  # final component may not exist, resolve parent only
-  local p=$1 dir base
-  dir=$(dirname -- "$p")
-  base=$(basename -- "$p")
-  # shellcheck disable=SC2164
-  ( cd "$dir" 2>/dev/null || cd .; pwd -P ) | awk -v b="$base" '{print $0"/"b}'
+  local p=$1 suffix="" base
+  case "$p" in /*) ;; *) p="$PWD/$p" ;; esac
+  while [ ! -d "$p" ]; do
+    base=$(basename -- "$p")
+    suffix="/$base$suffix"
+    p=$(dirname -- "$p")
+  done
+  ( CDPATH='' cd -- "$p" && printf '%s%s\n' "$(pwd -P)" "$suffix" )
 }
 
 # Compute relative path from $2's directory to $1. Falls back to absolute.
@@ -162,18 +165,40 @@ link_item() {
 
 # ---------- main ---------------------------------------------------------
 
+case "/$dest_dir/" in
+  */../*|*/./*) die "destination must not contain '.' or '..' path components" ;;
+esac
+
 src_root=$(abspath ".")
 dest_dir=$(abspath "$dest_dir")
+src_parent=$(abspath "..")
+workspace_root=$(abspath "../..")
+home_dir=""
+[ -n "${HOME:-}" ] && [ -d "$HOME" ] && home_dir=$(abspath "$HOME")
+case "$dest_dir" in
+  /) die "destination must not be the filesystem root" ;;
+  "$src_parent"|"$workspace_root") die "destination must not be a workspace container directory" ;;
+  "$home_dir") [ -z "$home_dir" ] || die "destination must not be the home directory" ;;
+  "$src_root") die "destination is the template source directory" ;;
+  "$src_root"/*) die "destination must not be inside the template source directory" ;;
+esac
+[ "$(dirname -- "$dest_dir")" != "/" ] || die "destination must not be a top-level system directory"
 mkd "$dest_dir"
 
-# Validate sources exist, warn if not.
-for i in "${LINK_ITEMS[@]}";  do [ -e "$src_root/$i" ] || [ -L "$src_root/$i" ] || warn "missing link source: $i"; done
-for i in "${COPY_ITEMS[@]}";  do [ -e "$src_root/$i" ] || [ -L "$src_root/$i" ] || warn "missing copy source: $i"; done
+# A successful copy promises a buildable standalone destination. Missing or
+# dangling required sources therefore make the operation fail, not degrade.
+for i in "${LINK_ITEMS[@]}"; do
+  [ -e "$src_root/$i" ] || die "missing or dangling link source: $i"
+done
+for i in "${COPY_ITEMS[@]}"; do
+  [ -e "$src_root/$i" ] || die "missing or dangling copy source: $i"
+done
+[ -e "$src_root/cmake/FailIfCppcheckDiagnostics.cmake" ] ||
+  die "cmake helper source is missing or dangling"
 
 # Create required links.
 for i in "${LINK_ITEMS[@]}"; do
   src="$src_root/$i"; dst="$dest_dir/$i"
-  [ -e "$src" ] || [ -L "$src" ] || { warn "skip link, not found: $i"; continue; }
   if ! clobber_if_needed "$dst"; then exit 3; fi
   mkd "$(dirname -- "$dst")"
   link_item "$src" "$dst"
@@ -183,8 +208,6 @@ done
 # Copy required items.
 for i in "${COPY_ITEMS[@]}"; do
   src="$src_root/$i"; dst="$dest_dir/$i"
-  [ -e "$src" ] || [ -L "$src" ] || { warn "skip copy, not found: $i"; continue; }
-
   if [ -d "$src" ] && [ ! -L "$src" ]; then
     if [ -e "$dst" ] || [ -L "$dst" ]; then
       if [ "$FORCE" -eq 1 ]; then
@@ -210,7 +233,7 @@ done
 # that is a symlink to scripts/cmake/, but a STANDALONE project has no scripts/
 # sibling to link to, so copy the helpers in as REAL files (dereference the
 # symlink). Without this CMake aborts: "p101 helper scripts not found".
-if [ -e "$src_root/cmake" ] && [ ! -e "$dest_dir/cmake/FailIfCppcheckDiagnostics.cmake" ]; then
+if [ ! -e "$dest_dir/cmake/FailIfCppcheckDiagnostics.cmake" ]; then
   if [ "$DRYRUN" -eq 1 ]; then
     say "cp -RL cmake/ helpers -> $dest_dir/cmake"
   else
