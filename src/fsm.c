@@ -21,16 +21,16 @@ enum states
 
 int run_fsm(const struct p101_env *env, struct p101_error *err, const struct arguments *args)
 {
-    struct p101_error                *fsm_err;
-    struct p101_env                  *fsm_env;
-    struct p101_fsm_info             *fsm = NULL;
-    p101_fsm_state_t                  from_state;
-    p101_fsm_state_t                  to_state;
-    static struct p101_fsm_transition transitions[] = {
-        {P101_FSM_INIT, A,             a   },
-        {A,             B,             b   },
-        {B,             C,             c   },
-        {C,             P101_FSM_EXIT, NULL}
+    struct p101_error                      *fsm_err;
+    struct p101_env                        *fsm_env;
+    struct p101_fsm_info                   *fsm = NULL;
+    p101_fsm_state_t                        from_state;
+    p101_fsm_state_t                        to_state;
+    p101_fsm_run_result                     fsm_result;
+    static const struct p101_fsm_transition transitions[] = {
+        {P101_FSM_INIT, A, a},
+        {A,             B, b},
+        {B,             C, c}
     };
     unsigned int delay;
 
@@ -62,8 +62,12 @@ int run_fsm(const struct p101_env *env, struct p101_error *err, const struct arg
         p101_fsm_info_set_did_change_state_notifier(fsm, did_change_state_notifier_func);
     }
 
-    delay = args->delay;
-    p101_fsm_run(fsm, &from_state, &to_state, &delay, transitions, sizeof(transitions));
+    delay      = args->delay;
+    fsm_result = p101_fsm_run(fsm, &from_state, &to_state, &delay, transitions, sizeof(transitions) / sizeof(transitions[0]));
+    if(fsm_result != P101_FSM_RUN_EXITED && p101_error_has_no_error(err) && p101_error_has_no_error(fsm_err))
+    {
+        P101_ERROR_RAISE_USER(err, "FSM stopped before exit", ERR_FSM);
+    }
 done:
     p101_fsm_info_destroy(env, &fsm);
 
