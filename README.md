@@ -1,67 +1,55 @@
-# template-c-program
+# p101-mutation-check
 
-`template-c-program` is a small C program driven by a finite-state machine — it validates a required `-d <delay>` argument, then runs a simple FSM. Like every Programming 101 template it ships with the full
-quality toolchain already wired in — a strict analysis build, the sanitizers,
-unit tests, a fuzzer, coverage, and the p101 doctor when installed — so any project you start from it is
-correct-by-construction from the first commit. `commands.md` is the one-line
-reference for every script; this file is the walkthrough.
+`p101-mutation-check` asks a narrower question than coverage: would the tests
+fail if an important decision in the C code were wrong?
 
-## Quick start
+It obtains exact mutation locations from `p101-wrapper-audit`'s Clang AST,
+copies the project for every mutant, changes one expression, and runs the test
+command directly without a shell. The original working tree is never edited.
 
-Configure a compiler once, then run the gate:
+## Usage
 
-    ./change-compiler.sh -c clang     # pick the compiler and configure the build
-    ./check.sh                       # format + strict build + tests + fuzz smoke + p101 doctor -> one PASS/FAIL
+    ./p101-mutation-check \
+        --compile-db build-clang/compile_commands.json \
+        --max-mutants 50 \
+        . -- ./test.sh
 
-`./change-compiler.sh --help` lists the compilers detected on this machine.
+List candidates without running tests:
 
-## The workflow
+    ./p101-mutation-check --compile-db build-clang/compile_commands.json --list .
 
-1. **Configure** — `./change-compiler.sh -c clang` picks the compiler and
-   configures the build. Run it again any time to switch compilers (e.g.
-   `./change-compiler.sh -c gcc`).
-2. **Build** — `./build.sh` compiles through the strict analysis pipeline:
-   clang-format check, clang-tidy, cppcheck, the Clang static analyzer,
-   hundreds of warnings under `-Werror`, and the sanitizers baked in. Add `-q`
-   to hide the per-file command dump.
-3. **Test** — `./test.sh` builds and runs the Unity test suite; `./test-all.sh`
-   runs it across every supported compiler.
-4. **Check** — `./check.sh` is the one command to run before you submit: it does
-   the format check, the strict build, the tests, a short fuzz smoke run, and
-   `p101-doctor` when that tool is installed, then prints a single PASS/FAIL and
-   exits non-zero on any failure. Add `--cov <pct>` to also fail when test
-   coverage is below a threshold.
-5. **Fuzz** — `./fuzz.sh` runs the libFuzzer target (coverage-guided, sanitizers
-   on) and prints PASS/FAIL. Here it fuzzes the program's own argument parser (`parse_arguments`), so it exercises real code you can break.
-6. **Coverage** — `./coverage-report.sh` builds an HTML coverage report; add
-   `--min <pct>` to fail below a threshold.
-7. **Diagnose** — when the local toolchain looks wrong, `./doctor.sh` reports
-   what actually works on this machine for this project.
+Use `--json` for the common finding envelope. Exit status is `0` when the
+baseline and every selected mutant are killed, `1` when one or more mutants
+survive, and `2` for parser, baseline, timeout, or tool trouble.
 
-## Formatting
+## Contract
 
-    ./build.sh -f     # apply clang-tidy --fix + clang-format, in place
-    ./build.sh -C     # check formatting only, no build (non-zero if unclean)
+Admitted input:
 
-## Adding or removing files
+- active translation units in one `compile_commands.json`;
+- Clang-located candidates from `p101-wrapper-audit`;
+- a test command supplied as an argument vector after `--`.
 
-This template uses a fixed strict `CMakeLists.txt` driven by `config.cmake` —
-there is no generated makefile to edit. When you add or remove a source or
-header, edit the lists in `config.cmake` (`main_SOURCES`, `main_HEADERS`, and
-`main_LINK_LIBRARIES` for libraries), then re-configure and build:
+The initial operators are intentionally small and reviewable:
 
-    ./change-compiler.sh -c clang
-    ./build.sh
+- comparison-boundary changes such as `<` to `<=`;
+- inversion of `p101_error_has_error` and `p101_error_has_no_error`;
+- replacement of one `p101_free`, `p101_close`, or `p101_fclose` call with a
+  no-op.
 
-## Start a new project from this template
+Each surviving mutant is `P101-MUTATION-001` and includes its operator, source
+location, and replacement. The JSON summary records killed, survived,
+inconclusive, and selected counts.
 
-    ./copy-template.sh <destination-directory>
+## Blind spots
 
-This copies everything you need — the sources, the build system, and every
-script — into a fresh project directory.
+This is focused mutation testing, not proof of test correctness. It does not
+mutate every expression, reason about equivalent mutants, explore concurrency
+schedules, or inspect third-party code. A killed mutant only proves that this
+test command rejected this one edit. Candidate discovery is limited to active
+translation units that Clang parsed successfully.
 
-## Prerequisites
+## Evidence
 
-The Programming 101 setup scripts install everything these tools need. If a
-script reports a missing tool, run `./doctor.sh` to see exactly what this
-project can and can't do on your machine, and re-run the setup if needed.
+    ./test.sh
+    ./check.sh

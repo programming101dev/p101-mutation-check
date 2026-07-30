@@ -1,2 +1,0 @@
-# Arguments passed to the built program when ./check.sh runs p101-doctor.
--d 0
