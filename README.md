@@ -18,6 +18,9 @@ List candidates without running tests:
 
     ./p101-mutation-check --compile-db build-clang/compile_commands.json --list .
 
+Combine `--list --json` to emit the reusable
+`p101-mutation-candidates-v1` candidate document instead of text.
+
 Use `--json` for the common finding envelope. Exit status is `0` when the
 baseline and every selected mutant are killed, `1` when one or more mutants
 survive, and `2` for parser, baseline, timeout, or tool trouble.

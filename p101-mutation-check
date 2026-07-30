@@ -136,7 +136,9 @@ def compile_mutant(args: argparse.Namespace, copied: Path, candidate: dict[str, 
         relative_directory = directory.relative_to(args.project)
     except ValueError as exc:
         raise RuntimeError(f"compile database directory is outside project: {directory}") from exc
-    return run_command(rewritten, copied / relative_directory, args.timeout)
+    working_directory = copied / relative_directory
+    working_directory.mkdir(parents=True, exist_ok=True)
+    return run_command(rewritten, working_directory, args.timeout)
 
 
 def apply_candidate(project: Path, copied: Path, candidate: dict[str, Any]) -> None:
@@ -222,9 +224,12 @@ def main(argv: list[str]) -> int:
         with tempfile.TemporaryDirectory(prefix="p101-mutation-check-discovery-") as temp:
             candidates = discover(args, Path(temp) / "candidates.json")
         if args.list:
-            for item in candidates:
-                print(f"{item['path']}:{item['line']}: {item['operator']}: {item['original']} -> {item['replacement']}")
-            print(f"p101-mutation-check: {len(candidates)} candidate(s)")
+            if args.json:
+                print(json.dumps({"schema": "p101-mutation-candidates-v1", "candidates": candidates, "summary": {"selected": len(candidates)}}, indent=2, sort_keys=True))
+            else:
+                for item in candidates:
+                    print(f"{item['path']}:{item['line']}: {item['operator']}: {item['original']} -> {item['replacement']}")
+                print(f"p101-mutation-check: {len(candidates)} candidate(s)")
             return 0
         if not candidates:
             raise RuntimeError("candidate discovery produced no mutants; refusing a vacuous mutation-check pass")
