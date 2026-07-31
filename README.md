@@ -3,23 +3,24 @@
 `p101-mutation-check` asks a narrower question than coverage: would the tests
 fail if an important decision in the C code were wrong?
 
-It obtains exact mutation locations from `p101-wrapper-audit`'s Clang AST,
-copies the project for every mutant, changes one expression, and runs the test
-command directly without a shell. The original working tree is never edited.
+It obtains exact mutation locations from `lib_c_facts`' native libclang
+analysis, copies the project for every mutant, changes one expression, and
+runs the test command directly without a shell. The original working tree is
+never edited, and candidate discovery no longer launches a Python policy tool.
 
 ## Usage
 
-    ./p101-mutation-check \
+    ./build-clang/p101-mutation-check \
         --compile-db build-clang/compile_commands.json \
         --max-mutants 50 \
         . -- ./test.sh
 
 List candidates without running tests:
 
-    ./p101-mutation-check --compile-db build-clang/compile_commands.json --list .
+    ./build-clang/p101-mutation-check --compile-db build-clang/compile_commands.json --list .
 
 Combine `--list --json` to emit the reusable
-`p101-mutation-candidates-v1` candidate document instead of text.
+`p101-mutation-candidates-v2` candidate document instead of text.
 
 Use `--json` for the common finding envelope. Exit status is `0` when the
 baseline and every selected mutant are killed, `1` when one or more mutants
@@ -30,7 +31,7 @@ survive, and `2` for parser, baseline, timeout, or tool trouble.
 Admitted input:
 
 - active translation units in one `compile_commands.json`;
-- Clang-located candidates from `p101-wrapper-audit`;
+- Clang-located candidates produced directly through `lib_c_facts`;
 - a test command supplied as an argument vector after `--`.
 
 The initial operators are intentionally small and reviewable:
@@ -51,6 +52,10 @@ mutate every expression, reason about equivalent mutants, explore concurrency
 schedules, or inspect third-party code. A killed mutant only proves that this
 test command rejected this one edit. Candidate discovery is limited to active
 translation units that Clang parsed successfully.
+
+The native implementation depends on libclang. The workspace setup installs
+the matching development package on Linux and the LLVM package on macOS and
+FreeBSD.
 
 ## Evidence
 
