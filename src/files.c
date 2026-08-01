@@ -68,12 +68,13 @@ static bool copy_file(const struct p101_env *env, struct p101_error *err, const 
     }
     while((count = p101_read(env, err, input, buffer, sizeof(buffer))) > 0 && p101_error_has_no_error(err))
     {
-        ssize_t written;
         ssize_t total;
 
         total = 0;
         while(total < count)
         {
+            ssize_t written;
+
             written = p101_write(env, err, output, buffer + total, (size_t)(count - total));
             if(written <= 0)
             {
@@ -260,7 +261,6 @@ bool p101_mutation_apply_candidate(const struct p101_env *env, struct p101_error
     long        raw_size;
     size_t      size;
     char       *contents;
-    FILE       *output;
     bool        result;
 
     P101_TRACE_SCOPE(env);
@@ -302,6 +302,8 @@ bool p101_mutation_apply_candidate(const struct p101_env *env, struct p101_error
     result = false;
     if(candidate->end <= size && candidate->start <= candidate->end && candidate->end - candidate->start == p101_strlen(env, candidate->original) && p101_memcmp(env, contents + candidate->start, candidate->original, candidate->end - candidate->start) == 0)
     {
+        FILE *output;
+
         output = p101_fopen(env, err, target, "wb");
         if(output != NULL)
         {

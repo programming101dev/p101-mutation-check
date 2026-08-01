@@ -86,7 +86,7 @@ static bool is_compile_output_option(const struct p101_env *env, const char *arg
 static bool build_compile_command(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_candidate *candidate, const char *copy, struct command_copy *command)
 {
     struct command_copy source;
-    char               *canonical_project;
+    const char         *canonical_project;
     char                project_path[P101_MUTATION_PATH_SIZE];
     size_t              read_index;
     size_t              write_index;
