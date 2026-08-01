@@ -150,10 +150,13 @@ int p101_mutation_run_command(const struct p101_env *env, struct p101_error *err
     }
     if(child == 0)
     {
-        if(directory != NULL && p101_chdir(env, NULL, directory) != 0)
+        if(directory != NULL &&
+           /* P101_ERROR_CONTRACT_ALLOW_NO_ERROR: the child reports setup failure only through its exit status. */
+           p101_chdir(env, NULL, directory) != 0)
         {
             p101_exit_immediately(env, P101_MUTATION_EXIT_TROUBLE);
         }
+        /* P101_ERROR_CONTRACT_ALLOW_NO_ERROR: the child reports exec failure only through its exit status. */
         (void)p101_execvp(env, NULL, command[0], command);
         p101_exit_immediately(env, P101_MUTATION_EXIT_TROUBLE);
     }
@@ -179,11 +182,11 @@ int p101_mutation_run_command(const struct p101_env *env, struct p101_error *err
         if(elapsed >= timeout)
         {
             *timed_out = true;
-            p101_kill(env, NULL, child, SIGKILL);
-            p101_waitpid(env, NULL, child, &status, 0);
+            p101_kill(env, NULL, child, SIGKILL);          // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: best-effort timeout cleanup.
+            p101_waitpid(env, NULL, child, &status, 0);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: best-effort timeout cleanup.
             return -1;
         }
-        p101_nanosleep(env, NULL, &pause_time, NULL);
+        p101_nanosleep(env, NULL, &pause_time, NULL);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: an interrupted poll simply retries.
     }
     if(WIFEXITED(status))
     {
