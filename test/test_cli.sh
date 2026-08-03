@@ -9,9 +9,28 @@ trap 'rm -rf "$work"' EXIT
 "$tool" --help >/dev/null
 
 cat >"$work/boundary.c" <<'SOURCE'
+struct p101_env;
+static void p101_close(const struct p101_env *env, void *err, int fd)
+{
+    (void)env;
+    (void)err;
+    (void)fd;
+}
+
 int below_limit(int value)
 {
     return value < 7;
+}
+
+int combine(int left, int right, int enabled)
+{
+    int total = left + right;
+    return enabled && total > 0;
+}
+
+void cleanup(const struct p101_env *env, void *err, int fd)
+{
+    p101_close(env, err, fd);
 }
 SOURCE
 
@@ -47,9 +66,18 @@ JSON
 "$tool" --compile-db "$work/compile_commands.json" \
     --operator comparison-boundary --list "$work" |
     grep -q 'comparison-boundary'
+"$tool" --compile-db "$work/compile_commands.json" \
+    --operator logical-connective --list "$work" |
+    grep -q 'logical-connective'
+"$tool" --compile-db "$work/compile_commands.json" \
+    --operator arithmetic-operator --list "$work" |
+    grep -q 'arithmetic-operator'
+"$tool" --compile-db "$work/compile_commands.json" \
+    --operator skip-cleanup --list "$work" |
+    grep -q 'skip-cleanup'
 
 output=$("$tool" --compile-db "$work/compile_commands.json" \
-    --operator comparison-boundary "$work" -- bash "$work/run-test.sh")
+    --operator comparison-boundary --max-mutants 1 "$work" -- bash "$work/run-test.sh")
 grep -q 'selected=1 killed=1 survived=0' <<<"$output"
 
 set +e

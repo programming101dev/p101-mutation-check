@@ -9,6 +9,7 @@
 #include <p101_filesystem/filesystem.h>
 #include <p101_io/io.h>
 #include <p101_process/process.h>
+#include <p101_record/record.h>
 #include <p101_time/time.h>
 #include <signal.h>
 #include <stdint.h>
@@ -19,27 +20,11 @@
 
 static void json_string(const struct p101_env *env, struct p101_error *err, FILE *stream, const char *text)
 {
-    const unsigned char *cursor;
-
     P101_TRACE_SCOPE(env);
-    p101_fputc(env, err, '"', stream);
-    for(cursor = (const unsigned char *)text; *cursor != '\0'; cursor++)
+    if(p101_record_write_json_string(stream, text == NULL ? "" : text) != 0)
     {
-        if(*cursor == '"' || *cursor == '\\')
-        {
-            p101_fputc(env, err, '\\', stream);
-            p101_fputc(env, err, *cursor, stream);
-        }
-        else if(*cursor == '\n')
-        {
-            p101_fputs(env, err, "\\n", stream);
-        }
-        else
-        {
-            p101_fputc(env, err, *cursor, stream);
-        }
+        P101_ERROR_RAISE_ERRNO(err, errno == 0 ? EIO : errno);
     }
-    p101_fputc(env, err, '"', stream);
 }
 
 void p101_mutation_report_results(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_result results[], size_t result_count)

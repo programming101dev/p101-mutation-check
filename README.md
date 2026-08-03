@@ -34,12 +34,15 @@ Admitted input:
 - Clang-located candidates produced directly through `lib_c_facts`;
 - a test command supplied as an argument vector after `--`.
 
-The initial operators are intentionally small and reviewable:
+The operators are intentionally focused and reviewable:
 
 - comparison-boundary changes such as `<` to `<=`;
+- logical-connective changes between `&&` and `||`;
+- arithmetic changes between `+` and `-`;
 - inversion of `p101_error_has_error` and `p101_error_has_no_error`;
-- replacement of one `p101_free`, `p101_close`, or `p101_fclose` call with a
-  no-op.
+- replacement of a p101 cleanup operation with a no-op. Cleanup includes
+  close, free, unmap, destroy, release, unlock, join, detach, and error-reset
+  operations.
 
 Each surviving mutant is `P101-MUTATION-001` and includes its operator, source
 location, and replacement. The JSON summary records killed, survived,
