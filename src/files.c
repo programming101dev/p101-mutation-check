@@ -28,21 +28,24 @@ static bool ignored_name(const struct p101_env *env, const char *name)
 {
     static const char *const ignored[] = {".git", ".pytest_cache", "__pycache__", "build", "compile_commands.json", "coverage", "debug", "profile"};
     size_t                   index;
+    bool                     ignored_name_result;
 
     P101_TRACE_SCOPE(env);
+    ignored_name_result = false;
     for(index = 0U; index < sizeof(ignored) / sizeof(ignored[0]); index++)
     {
         if(p101_strcmp(env, name, ignored[index]) == 0)
         {
-            return true;
+            ignored_name_result = true;
+            break;
         }
     }
-    if(p101_strncmp(env, name, "build-", sizeof("build-") - 1U) == 0 || p101_strncmp(env, name, "coverage-", sizeof("coverage-") - 1U) == 0 || p101_strncmp(env, name, "debug-", sizeof("debug-") - 1U) == 0 ||
-       p101_strncmp(env, name, "profile-", sizeof("profile-") - 1U) == 0)
+    if(!ignored_name_result && (p101_strncmp(env, name, "build-", sizeof("build-") - 1U) == 0 || p101_strncmp(env, name, "coverage-", sizeof("coverage-") - 1U) == 0 || p101_strncmp(env, name, "debug-", sizeof("debug-") - 1U) == 0 ||
+                                p101_strncmp(env, name, "profile-", sizeof("profile-") - 1U) == 0))
     {
-        return true;
+        ignored_name_result = true;
     }
-    return false;
+    return ignored_name_result;
 }
 
 static bool copy_file(const struct p101_env *env, struct p101_error *err, const char *source, const char *destination, mode_t mode)
@@ -55,16 +58,16 @@ static bool copy_file(const struct p101_env *env, struct p101_error *err, const 
 
     P101_TRACE_SCOPE(env);
     result = false;
+    output = -1;
     input  = p101_open(env, err, source, O_RDONLY);
     if(input < 0)
     {
-        return false;
+        goto done;
     }
     output = p101_open(env, err, destination, O_WRONLY | O_CREAT | O_TRUNC, mode & PERMISSION_BITS);
     if(output < 0)
     {
-        p101_close(env, NULL, input);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: cleanup preserves the open failure.
-        return false;
+        goto done;
     }
     while((count = p101_read(env, err, input, buffer, sizeof(buffer))) > 0 && p101_error_has_no_error(err))
     {
@@ -91,8 +94,16 @@ static bool copy_file(const struct p101_env *env, struct p101_error *err, const 
     {
         result = true;
     }
-    p101_close(env, NULL, output);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: cleanup preserves the copy result.
-    p101_close(env, NULL, input);     // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: cleanup preserves the copy result.
+
+done:
+    if(output >= 0)
+    {
+        p101_close(env, NULL, output);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: cleanup preserves the copy result.
+    }
+    if(input >= 0)
+    {
+        p101_close(env, NULL, input);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: cleanup preserves the copy result.
+    }
     return result;
 }
 
@@ -100,21 +111,23 @@ static bool copy_file(const struct p101_env *env, struct p101_error *err, const 
 bool p101_mutation_copy_tree(const struct p101_env *env, struct p101_error *err, const char *source, const char *destination)
 {
     struct stat status;
+    bool        result;
 
     P101_TRACE_SCOPE(env);
+    result = false;
     if(p101_lstat(env, err, source, &status) != 0)
     {
-        return false;
+        goto done;
     }
     if(S_ISDIR(status.st_mode))
     {
         DIR           *directory;
         struct dirent *entry;
-        bool           result;
 
+        directory = NULL;
         if(p101_mkdir(env, err, destination, status.st_mode & PERMISSION_BITS) != 0 && !p101_error_is_errno(err, EEXIST))
         {
-            return false;
+            goto done;
         }
         if(p101_error_has_error(err))
         {
@@ -123,7 +136,7 @@ bool p101_mutation_copy_tree(const struct p101_env *env, struct p101_error *err,
         directory = p101_opendir(env, err, source);
         if(directory == NULL)
         {
-            return false;
+            goto done;
         }
         result = true;
         while((entry = p101_readdir(env, err, directory)) != NULL && p101_error_has_no_error(err))
@@ -148,54 +161,60 @@ bool p101_mutation_copy_tree(const struct p101_env *env, struct p101_error *err,
             result = false;
         }
         p101_closedir(env, NULL, directory);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: cleanup preserves the traversal result.
-        return result;
     }
-    if(S_ISLNK(status.st_mode))
+    else if(S_ISLNK(status.st_mode))
     {
         char    target[P101_MUTATION_PATH_SIZE];
         ssize_t length;
 
         length = p101_readlink(env, err, source, target, sizeof(target) - 1U);
-        if(length < 0)
+        if(length >= 0)
         {
-            return false;
+            target[length] = '\0';
+            result         = p101_symlink(env, err, target, destination) == 0;
         }
-        target[length] = '\0';
-        return p101_symlink(env, err, target, destination) == 0;
     }
-    if(S_ISREG(status.st_mode))
+    else if(S_ISREG(status.st_mode))
     {
-        return copy_file(env, err, source, destination, status.st_mode);
+        result = copy_file(env, err, source, destination, status.st_mode);
     }
-    return true;
+    else
+    {
+        result = true;
+    }
+
+done:
+    return result;
 }
 
 // NOLINTNEXTLINE(misc-no-recursion)
 bool p101_mutation_remove_tree(const struct p101_env *env, const char *path)
 {
     struct stat status;
+    bool        result;
 
     P101_TRACE_SCOPE(env);
+    result = false;
     /* P101_ERROR_CONTRACT_ALLOW_NO_ERROR: recursive cleanup reports failure through its boolean result. */
     if(p101_lstat(env, NULL, path, &status) != 0)
     {
-        return false;
+        goto done;
     }
     if(!S_ISDIR(status.st_mode))
     {
         /* P101_ERROR_CONTRACT_ALLOW_NO_ERROR: recursive cleanup reports failure through its boolean result. */
-        return p101_unlink(env, NULL, path) == 0;
+        result = p101_unlink(env, NULL, path) == 0;
     }
+    else
     {
         DIR           *directory;
         struct dirent *entry;
-        bool           result;
 
         /* P101_ERROR_CONTRACT_ALLOW_NO_ERROR: recursive cleanup reports failure through its boolean result. */
         directory = p101_opendir(env, NULL, path);
         if(directory == NULL)
         {
-            return false;
+            goto done;
         }
         result = true;
         /* P101_ERROR_CONTRACT_ALLOW_NO_ERROR: recursive cleanup reports failure through its boolean result. */
@@ -221,8 +240,10 @@ bool p101_mutation_remove_tree(const struct p101_env *env, const char *path)
         {
             result = false;
         }
-        return result;
     }
+
+done:
+    return result;
 }
 
 char *p101_mutation_rewrite_path(const struct p101_env *env, struct p101_error *err, const char *project, const char *copy, const char *value)
@@ -264,14 +285,17 @@ bool p101_mutation_apply_candidate(const struct p101_env *env, struct p101_error
     bool        result;
 
     P101_TRACE_SCOPE(env);
+    stream   = NULL;
+    contents = NULL;
+    result   = false;
     if(p101_realpath(env, err, arguments->project, canonical_project) == NULL)
     {
-        return false;
+        goto done;
     }
     if(p101_strncmp(env, candidate->path, canonical_project, p101_strlen(env, canonical_project)) != 0)
     {
         P101_ERROR_RAISE_USER(err, "Mutation candidate is outside the project.", 1);
-        return false;
+        goto done;
     }
     relative = candidate->path + p101_strlen(env, canonical_project);
     if(*relative == '/')
@@ -282,24 +306,21 @@ bool p101_mutation_apply_candidate(const struct p101_env *env, struct p101_error
     stream = p101_fopen(env, err, target, "rb");
     if(stream == NULL || p101_fseek(env, err, stream, 0L, SEEK_END) != 0)
     {
-        return false;
+        goto done;
     }
     raw_size = p101_ftell(env, err, stream);
     if(raw_size < 0L || p101_fseek(env, err, stream, 0L, SEEK_SET) != 0)
     {
-        p101_fclose(env, NULL, stream);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: cleanup preserves the seek failure.
-        return false;
+        goto done;
     }
     size     = (size_t)raw_size;
     contents = (char *)p101_malloc(env, err, size + 1U);
     if(contents == NULL || p101_fread(env, err, contents, 1U, size, stream) != size)
     {
-        p101_fclose(env, NULL, stream);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: cleanup preserves the read failure.
-        p101_free(env, contents);
-        return false;
+        goto done;
     }
     p101_fclose(env, err, stream);
-    result = false;
+    stream = NULL;
     if(candidate->end <= size && candidate->start <= candidate->end && candidate->end - candidate->start == p101_strlen(env, candidate->original) && p101_memcmp(env, contents + candidate->start, candidate->original, candidate->end - candidate->start) == 0)
     {
         FILE *output;
@@ -326,10 +347,12 @@ bool p101_mutation_apply_candidate(const struct p101_env *env, struct p101_error
     {
         P101_ERROR_RAISE_USER(err, "Mutation candidate source changed.", 1);
     }
-    p101_free(env, contents);
-    if(result && p101_error_has_no_error(err))
+done:
+    if(stream != NULL)
     {
-        return true;
+        p101_fclose(env, NULL, stream);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: cleanup preserves the mutation failure.
     }
-    return false;
+    p101_free(env, contents);
+    result = (result && p101_error_has_no_error(err)) != 0;
+    return result;
 }

@@ -17,13 +17,26 @@
 #include <time.h>
 #include <unistd.h>
 
+#ifdef __APPLE__
+    #include <crt_externs.h>
+#endif
+
+#ifdef __FreeBSD__
+extern char **environ;    // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+#endif
+
 enum
 {
-    PROCESS_SIGNAL_BASE = 128
+    PROCESS_SIGNAL_BASE       = 128,
+    SPAWN_PREFIX_COUNT        = 4,
+    SPAWN_DIRECTORY_INDEX     = 4,
+    SPAWN_COMMAND_OFFSET      = 5,
+    SPAWN_ALLOCATION_OVERHEAD = 6
 };
 
-static const double NANOSECONDS_PER_SECOND = 1000000000.0;
-static const long   POLL_NANOSECONDS       = 10000000L;
+static const double      NANOSECONDS_PER_SECOND           = 1000000000.0;
+static const long        POLL_NANOSECONDS                 = 10000000L;
+static const char *const SPAWN_PREFIX[SPAWN_PREFIX_COUNT] = {"sh", "-c", "cd \"$1\" && shift && exec \"$@\"", "p101-mutation-check"};
 
 struct command_copy
 {
@@ -31,6 +44,66 @@ struct command_copy
     char **arguments;
     size_t argument_count;
 };
+
+static char **process_environment(void);
+static char **spawn_arguments(const struct p101_env *env, struct p101_error *err, char *const command[], const char *directory);
+static void   spawn_arguments_destroy(const struct p101_env *env, char **arguments);
+
+static char **process_environment(void)
+{
+#ifdef __APPLE__
+    return *_NSGetEnviron();
+#else
+    return environ;
+#endif
+}
+
+static char **spawn_arguments(const struct p101_env *env, struct p101_error *err, char *const command[], const char *directory)
+{
+    char **arguments;
+    size_t command_count;
+    size_t index;
+
+    arguments     = NULL;
+    command_count = 0U;
+    while(command[command_count] != NULL)
+    {
+        command_count++;
+    }
+    arguments = (char **)p101_calloc(env, err, command_count + SPAWN_ALLOCATION_OVERHEAD, sizeof(*arguments));
+    if(arguments == NULL)
+    {
+        goto done;
+    }
+    for(index = 0U; index < SPAWN_PREFIX_COUNT && p101_error_has_no_error(err); index++)
+    {
+        arguments[index] = p101_mutation_copy_text(env, err, SPAWN_PREFIX[index]);
+    }
+    arguments[SPAWN_DIRECTORY_INDEX] = p101_mutation_copy_text(env, err, directory);
+    if(p101_error_has_error(err))
+    {
+        spawn_arguments_destroy(env, arguments);
+        arguments = NULL;
+        goto done;
+    }
+
+    for(index = 0U; index < command_count; index++)
+    {
+        arguments[index + SPAWN_COMMAND_OFFSET] = command[index];
+    }
+
+done:
+    return arguments;
+}
+
+static void spawn_arguments_destroy(const struct p101_env *env, char **arguments)
+{
+    for(size_t index = 0U; index <= SPAWN_DIRECTORY_INDEX; index++)
+    {
+        p101_free(env, arguments[index]);
+    }
+    p101_free(env, (void *)arguments);
+}
 
 static bool command_observer(const struct p101_env *env, struct p101_error *err, const struct p101_c_compile_command *command, void *context)
 {
@@ -64,23 +137,21 @@ static void destroy_command(const struct p101_env *env, struct command_copy *com
 
 static bool compile_option_takes_value(const struct p101_env *env, const char *argument)
 {
+    bool takes_value;
+
     P101_TRACE_SCOPE(env);
-    if(p101_strcmp(env, argument, "-o") == 0 || p101_strcmp(env, argument, "-MF") == 0 || p101_strcmp(env, argument, "-MT") == 0 || p101_strcmp(env, argument, "-MQ") == 0)
-    {
-        return true;
-    }
-    return false;
+    takes_value = (p101_strcmp(env, argument, "-o") == 0 || p101_strcmp(env, argument, "-MF") == 0 || p101_strcmp(env, argument, "-MT") == 0 || p101_strcmp(env, argument, "-MQ") == 0) != 0;
+    return takes_value;
 }
 
 static bool is_compile_output_option(const struct p101_env *env, const char *argument)
 {
+    bool is_output;
+
     P101_TRACE_SCOPE(env);
-    if((argument[0] == '-' && argument[1] == 'o' && p101_strcmp(env, argument, "-ObjC") != 0) || p101_strncmp(env, argument, "-MF", sizeof("-MF") - 1U) == 0 || p101_strncmp(env, argument, "-MT", sizeof("-MT") - 1U) == 0 ||
-       p101_strncmp(env, argument, "-MQ", sizeof("-MQ") - 1U) == 0)
-    {
-        return true;
-    }
-    return false;
+    is_output = ((argument[0] == '-' && argument[1] == 'o' && p101_strcmp(env, argument, "-ObjC") != 0) || p101_strncmp(env, argument, "-MF", sizeof("-MF") - 1U) == 0 || p101_strncmp(env, argument, "-MT", sizeof("-MT") - 1U) == 0 ||
+                 p101_strncmp(env, argument, "-MQ", sizeof("-MQ") - 1U) == 0) != 0;
+    return is_output;
 }
 
 static bool build_compile_command(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_candidate *candidate, const char *copy, struct command_copy *command)
@@ -90,19 +161,20 @@ static bool build_compile_command(const struct p101_env *env, struct p101_error 
     char                project_path[P101_MUTATION_PATH_SIZE];
     size_t              read_index;
     size_t              write_index;
+    bool                success;
 
     P101_TRACE_SCOPE(env);
     p101_memset(env, &source, 0, sizeof(source));
     p101_memset(env, command, 0, sizeof(*command));
+    success = false;
     if(!p101_c_facts_with_compile_command(env, err, arguments->compile_database, candidate->path, command_observer, &source))
     {
-        return false;
+        goto done;
     }
     canonical_project = p101_realpath(env, err, arguments->project, project_path);
     if(canonical_project == NULL)
     {
-        destroy_command(env, &source);
-        return false;
+        goto done;
     }
     command->arguments = (char **)p101_calloc(env, err, source.argument_count + 2U, sizeof(*command->arguments));
     command->directory = p101_mutation_rewrite_path(env, err, project_path, copy, source.directory);
@@ -129,36 +201,49 @@ static bool build_compile_command(const struct p101_env *env, struct p101_error 
     }
     command->arguments[write_index++] = p101_mutation_copy_text(env, err, "-fsyntax-only");
     command->argument_count           = write_index;
+    success                           = p101_error_has_no_error(err);
+
+done:
     destroy_command(env, &source);
-    return p101_error_has_no_error(err);
+    return success;
 }
 
-int p101_mutation_run_command(const struct p101_env *env, struct p101_error *err, char *const command[], const char *directory, double timeout, bool *timed_out)
+int p101_mutation_run_command(const struct p101_env *env, struct p101_error *err, char **command, const char *directory, double timeout, bool *timed_out)
 {
+    char          **child_arguments;
+    const char     *child_file;
     pid_t           child;
     struct timespec start;
     struct timespec now;
     struct timespec pause_time;
     int             status;
+    int             result;
 
     P101_TRACE_SCOPE(env);
-    *timed_out = false;
-    child      = p101_fork(env, err);
-    if(child < 0)
+    result          = -1;
+    *timed_out      = false;
+    child_file      = command[0];
+    child_arguments = command;
+    if(directory != NULL)
     {
-        return -1;
+        child_arguments = spawn_arguments(env, err, command, directory);
+        child_file      = "sh";
     }
-    if(child == 0)
+    if(child_arguments == NULL || p101_error_has_error(err))
     {
-        if(directory != NULL &&
-           /* P101_ERROR_CONTRACT_ALLOW_NO_ERROR: the child reports setup failure only through its exit status. */
-           p101_chdir(env, NULL, directory) != 0)
+        goto done;
+    }
+    if(p101_posix_spawnp(env, err, &child, child_file, NULL, NULL, child_arguments, process_environment()) != 0)
+    {
+        if(child_arguments != command)
         {
-            p101_exit_immediately(env, P101_MUTATION_EXIT_TROUBLE);
+            spawn_arguments_destroy(env, child_arguments);
         }
-        /* P101_ERROR_CONTRACT_ALLOW_NO_ERROR: the child reports exec failure only through its exit status. */
-        (void)p101_execvp(env, NULL, command[0], command);
-        p101_exit_immediately(env, P101_MUTATION_EXIT_TROUBLE);
+        goto done;
+    }
+    if(child_arguments != command)
+    {
+        spawn_arguments_destroy(env, child_arguments);
     }
     p101_clock_gettime(env, err, CLOCK_MONOTONIC, &start);
     pause_time.tv_sec  = 0;
@@ -175,7 +260,7 @@ int p101_mutation_run_command(const struct p101_env *env, struct p101_error *err
         }
         if(waited < 0 || p101_error_has_error(err))
         {
-            return -1;
+            goto done;
         }
         p101_clock_gettime(env, err, CLOCK_MONOTONIC, &now);
         elapsed = (double)(now.tv_sec - start.tv_sec) + ((double)(now.tv_nsec - start.tv_nsec) / NANOSECONDS_PER_SECOND);
@@ -184,19 +269,21 @@ int p101_mutation_run_command(const struct p101_env *env, struct p101_error *err
             *timed_out = true;
             p101_kill(env, NULL, child, SIGKILL);          // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: best-effort timeout cleanup.
             p101_waitpid(env, NULL, child, &status, 0);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: best-effort timeout cleanup.
-            return -1;
+            goto done;
         }
         p101_nanosleep(env, NULL, &pause_time, NULL);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: an interrupted poll simply retries.
     }
     if(WIFEXITED(status))
     {
-        return WEXITSTATUS(status);
+        result = WEXITSTATUS(status);
     }
-    if(WIFSIGNALED(status))
+    else if(WIFSIGNALED(status))
     {
-        return PROCESS_SIGNAL_BASE + WTERMSIG(status);
+        result = PROCESS_SIGNAL_BASE + WTERMSIG(status);
     }
-    return -1;
+
+done:
+    return result;
 }
 
 bool p101_mutation_execute(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_candidate *candidate, struct p101_mutation_result *result)

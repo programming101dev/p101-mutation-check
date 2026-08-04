@@ -47,42 +47,46 @@ static bool parse_size(const struct p101_env *env, struct p101_error *err, const
 {
     unsigned long parsed;
     char         *end;
+    bool          valid;
 
     P101_TRACE_SCOPE(env);
     end    = NULL;
     parsed = p101_strtoul(env, err, text, &end, INTEGER_BASE);
-    if(p101_error_has_error(err) || end == text || *end != '\0' || parsed == 0UL || parsed > MAX_MUTANTS)
+    valid  = (p101_error_has_no_error(err) && end != text && *end == '\0' && parsed > 0UL && parsed <= MAX_MUTANTS) != 0;
+    if(valid)
     {
-        return false;
+        *value = parsed;
     }
-    *value = parsed;
-    return true;
+    return valid;
 }
 
 static bool parse_timeout(const struct p101_env *env, struct p101_error *err, const char *text, double *value)
 {
     char  *end;
     double parsed;
+    bool   valid;
 
     P101_TRACE_SCOPE(env);
     end    = NULL;
     parsed = p101_strtod(env, err, text, &end);
-    if(p101_error_has_error(err) || end == text || *end != '\0' || parsed <= 0.0)
+    valid  = (p101_error_has_no_error(err) && end != text && *end == '\0' && parsed > 0.0) != 0;
+    if(valid)
     {
-        return false;
+        *value = parsed;
     }
-    *value = parsed;
-    return true;
+    return valid;
 }
 
 bool p101_mutation_parse_arguments(const struct p101_env *env, struct p101_error *err, int argc, char *argv[], struct p101_mutation_arguments *arguments)
 {
-    int index;
+    int  index;
+    bool valid;
 
     P101_TRACE_SCOPE(env);
     p101_memset(env, arguments, 0, sizeof(*arguments));
     arguments->max_mutants = DEFAULT_MAX_MUTANTS;
     arguments->timeout     = DEFAULT_TIMEOUT_SECONDS;
+    valid                  = true;
     for(index = 1; index < argc; index++)
     {
         const char *argument;
@@ -97,7 +101,8 @@ bool p101_mutation_parse_arguments(const struct p101_env *env, struct p101_error
         if(p101_strcmp(env, argument, "-h") == 0 || p101_strcmp(env, argument, "--help") == 0)
         {
             p101_mutation_usage(env, err, argv[0], EXIT_SUCCESS);
-            return false;
+            valid = false;
+            break;
         }
         if(p101_strcmp(env, argument, "--compile-db") == 0 && index + 1 < argc)
         {
@@ -111,14 +116,16 @@ bool p101_mutation_parse_arguments(const struct p101_env *env, struct p101_error
         {
             if(!parse_size(env, err, argv[++index], &arguments->max_mutants))
             {
-                return false;
+                valid = false;
+                break;
             }
         }
         else if(p101_strcmp(env, argument, "--timeout") == 0 && index + 1 < argc)
         {
             if(!parse_timeout(env, err, argv[++index], &arguments->timeout))
             {
-                return false;
+                valid = false;
+                break;
             }
         }
         else if(p101_strcmp(env, argument, "--list") == 0)
@@ -133,14 +140,15 @@ bool p101_mutation_parse_arguments(const struct p101_env *env, struct p101_error
         {
             if(argument[0] == '-' || arguments->project != NULL)
             {
-                return false;
+                valid = false;
+                break;
             }
             arguments->project = argument;
         }
     }
-    if(arguments->project == NULL || arguments->compile_database == NULL || (!arguments->list_only && arguments->test_command_count == 0U))
+    if(valid && (arguments->project == NULL || arguments->compile_database == NULL || (!arguments->list_only && arguments->test_command_count == 0U)))
     {
-        return false;
+        valid = false;
     }
-    return true;
+    return valid;
 }

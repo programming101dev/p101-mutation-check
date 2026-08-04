@@ -36,21 +36,26 @@ static bool operator_selected(const struct p101_env *env, const struct p101_muta
 {
     const char *name;
     size_t      index;
+    bool        selected;
 
     P101_TRACE_SCOPE(env);
+    selected = arguments->operator_count == 0U;
     if(arguments->operator_count == 0U)
     {
-        return true;
+        goto done;
     }
     name = p101_c_mutation_kind_name(kind);
     for(index = 0U; index < arguments->operator_count; index++)
     {
         if(p101_strcmp(env, arguments->operators[index], name) == 0)
         {
-            return true;
+            selected = true;
+            break;
         }
     }
-    return false;
+
+done:
+    return selected;
 }
 
 bool p101_mutation_candidate_observer(const struct p101_env *env, struct p101_error *err, const struct p101_c_analysis_record *record, void *context)
@@ -58,22 +63,25 @@ bool p101_mutation_candidate_observer(const struct p101_env *env, struct p101_er
     struct p101_mutation_candidates *candidates;
     struct p101_mutation_candidate  *candidate;
     char                             canonical_path[P101_MUTATION_PATH_SIZE];
+    bool                             keep_going;
 
     P101_TRACE_SCOPE(env);
     candidates = (struct p101_mutation_candidates *)context;
+    keep_going = true;
     if(record->kind != P101_C_ANALYSIS_MUTATION || !operator_selected(env, candidates->arguments, record->mutation))
     {
-        return true;
+        goto done;
     }
     if(candidates->count >= candidates->capacity)
     {
-        return true;
+        goto done;
     }
     candidate = &candidates->items[candidates->count++];
     p101_memset(env, candidate, 0, sizeof(*candidate));
     if(p101_realpath(env, err, record->path, canonical_path) == NULL)
     {
-        return false;
+        keep_going = false;
+        goto done;
     }
     p101_snprintf(env, err, candidate->path, sizeof(candidate->path), "%s", canonical_path);
     candidate->line        = record->line;
@@ -82,7 +90,10 @@ bool p101_mutation_candidate_observer(const struct p101_env *env, struct p101_er
     candidate->kind        = record->mutation;
     candidate->original    = p101_mutation_copy_text(env, err, record->name);
     candidate->replacement = p101_mutation_copy_text(env, err, record->replacement);
-    return p101_error_has_no_error(err);
+    keep_going             = p101_error_has_no_error(err);
+
+done:
+    return keep_going;
 }
 
 void p101_mutation_destroy_candidates(const struct p101_env *env, struct p101_mutation_candidates *candidates)
