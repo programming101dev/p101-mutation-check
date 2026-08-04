@@ -21,7 +21,7 @@
     #include <crt_externs.h>
 #endif
 
-#ifdef __FreeBSD__
+#ifndef __APPLE__
 extern char **environ;    // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 #endif
 
