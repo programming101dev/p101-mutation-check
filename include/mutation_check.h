@@ -42,9 +42,9 @@ struct p101_mutation_arguments
 
 struct p101_mutation_candidates
 {
-    struct p101_mutation_candidate *items;
-    size_t                          count;
-    size_t                          capacity;
+    struct p101_mutation_candidate       *items;
+    size_t                                count;
+    size_t                                capacity;
     const struct p101_mutation_arguments *arguments;
 };
 
@@ -56,18 +56,18 @@ struct p101_mutation_result
     bool                                  timed_out;
 };
 
-void p101_mutation_usage(const struct p101_env *env, struct p101_error *err, const char *program_name, int status);
-bool p101_mutation_parse_arguments(const struct p101_env *env, struct p101_error *err, int argc, char *argv[], struct p101_mutation_arguments *arguments);
-bool p101_mutation_candidate_observer(const struct p101_env *env, struct p101_error *err, const struct p101_c_analysis_record *record, void *context);
-void p101_mutation_destroy_candidates(const struct p101_env *env, struct p101_mutation_candidates *candidates);
+void  p101_mutation_usage(const struct p101_env *env, struct p101_error *err, const char *program_name, int status);
+bool  p101_mutation_parse_arguments(const struct p101_env *env, struct p101_error *err, int argc, char *argv[], struct p101_mutation_arguments *arguments);
+bool  p101_mutation_candidate_observer(const struct p101_env *env, struct p101_error *err, const struct p101_c_analysis_record *record, void *context);
+void  p101_mutation_destroy_candidates(const struct p101_env *env, struct p101_mutation_candidates *candidates);
 char *p101_mutation_copy_text(const struct p101_env *env, struct p101_error *err, const char *text);
-bool p101_mutation_copy_tree(const struct p101_env *env, struct p101_error *err, const char *source, const char *destination);
-bool p101_mutation_remove_tree(const struct p101_env *env, const char *path);
+bool  p101_mutation_copy_tree(const struct p101_env *env, struct p101_error *err, const char *source, const char *destination);
+bool  p101_mutation_remove_tree(const struct p101_env *env, const char *path);
 char *p101_mutation_rewrite_path(const struct p101_env *env, struct p101_error *err, const char *project, const char *copy, const char *value);
-bool p101_mutation_apply_candidate(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_candidate *candidate, const char *copy);
-int  p101_mutation_run_command(const struct p101_env *env, struct p101_error *err, char **command, const char *directory, double timeout, bool *timed_out);
-bool p101_mutation_execute(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_candidate *candidate, struct p101_mutation_result *result);
-void p101_mutation_report_results(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_result results[], size_t result_count);
-void p101_mutation_list_candidates(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_candidates *candidates);
+bool  p101_mutation_apply_candidate(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_candidate *candidate, const char *copy);
+int   p101_mutation_run_command(const struct p101_env *env, struct p101_error *err, char **command, const char *directory, double timeout, bool *timed_out);
+bool  p101_mutation_execute(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_candidate *candidate, struct p101_mutation_result *result);
+void  p101_mutation_report_results(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_result results[], size_t result_count);
+void  p101_mutation_list_candidates(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_candidates *candidates);
 
 #endif
