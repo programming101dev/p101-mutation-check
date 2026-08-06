@@ -43,12 +43,14 @@
 
 char *p101_mutation_copy_text(const struct p101_env *env, struct p101_error *err, const char *text)
 {
+    void  *p101_call_result_1;
     char  *copy;
     size_t length;
 
     P101_TRACE_SCOPE(env);
-    length = p101_strlen(env, text);
-    copy   = (char *)p101_malloc(env, err, length + 1U);
+    length             = p101_strlen(env, text);
+    p101_call_result_1 = p101_malloc(env, err, length + 1U);
+    copy               = (char *)p101_call_result_1;
     if(copy != NULL)
     {
         p101_memcpy(env, copy, text, length + 1U);
@@ -58,6 +60,7 @@ char *p101_mutation_copy_text(const struct p101_env *env, struct p101_error *err
 
 static bool operator_selected(const struct p101_env *env, const struct p101_mutation_arguments *arguments, enum p101_c_mutation_kind kind)
 {
+    int         p101_call_result_2;
     const char *name;
     size_t      index;
     bool        selected;
@@ -71,7 +74,8 @@ static bool operator_selected(const struct p101_env *env, const struct p101_muta
     name = p101_c_mutation_kind_name(kind);
     for(index = 0U; index < arguments->operator_count; index++)
     {
-        if(p101_strcmp(env, arguments->operators[index], name) == 0)
+        p101_call_result_2 = p101_strcmp(env, arguments->operators[index], name);
+        if(p101_call_result_2 == 0)
         {
             selected = true;
             break;
@@ -84,6 +88,9 @@ done:
 
 bool p101_mutation_candidate_observer(const struct p101_env *env, struct p101_error *err, const struct p101_c_analysis_record *record, void *context)
 {
+    int                              p101_expression_result_4;
+    bool                             p101_call_result_5;
+    char                            *p101_call_result_3;
     struct p101_mutation_candidates *candidates;
     struct p101_mutation_candidate  *candidate;
     char                             canonical_path[P101_MUTATION_PATH_SIZE];
@@ -92,7 +99,23 @@ bool p101_mutation_candidate_observer(const struct p101_env *env, struct p101_er
     P101_TRACE_SCOPE(env);
     candidates = (struct p101_mutation_candidates *)context;
     keep_going = true;
-    if(record->kind != P101_C_ANALYSIS_MUTATION || !operator_selected(env, candidates->arguments, record->mutation))
+    if(record->kind != P101_C_ANALYSIS_MUTATION)
+    {
+        p101_expression_result_4 = 1;
+    }
+    else
+    {
+        p101_call_result_5 = operator_selected(env, candidates->arguments, record->mutation);
+        if(!p101_call_result_5)
+        {
+            p101_expression_result_4 = 1;
+        }
+        else
+        {
+            p101_expression_result_4 = 0;
+        }
+    }
+    if(p101_expression_result_4)
     {
         goto done;
     }
@@ -102,7 +125,8 @@ bool p101_mutation_candidate_observer(const struct p101_env *env, struct p101_er
     }
     candidate = &candidates->items[candidates->count++];
     p101_memset(env, candidate, 0, sizeof(*candidate));
-    if(p101_realpath(env, err, record->path, canonical_path) == NULL)
+    p101_call_result_3 = p101_realpath(env, err, record->path, canonical_path);
+    if(p101_call_result_3 == NULL)
     {
         keep_going = false;
         goto done;
@@ -125,18 +149,15 @@ void p101_mutation_destroy_candidates(const struct p101_env *env, struct p101_mu
     size_t index;
 
     P101_TRACE_SCOPE(env);
-    if(candidates->items == NULL)
+    if(candidates->items != NULL)
     {
-        candidates->count    = 0U;
-        candidates->capacity = 0U;
-        return;
+        for(index = 0U; index < candidates->count; index++)
+        {
+            p101_free(env, candidates->items[index].replacement);
+            p101_free(env, candidates->items[index].original);
+        }
+        p101_free(env, candidates->items);
     }
-    for(index = 0U; index < candidates->count; index++)
-    {
-        p101_free(env, candidates->items[index].replacement);
-        p101_free(env, candidates->items[index].original);
-    }
-    p101_free(env, candidates->items);
     candidates->items    = NULL;
     candidates->count    = 0U;
     candidates->capacity = 0U;

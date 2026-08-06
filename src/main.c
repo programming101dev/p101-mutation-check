@@ -43,6 +43,32 @@
 
 int main(int argc, char *argv[])
 {
+    int                             p101_expression_result_10;
+    int                             p101_expression_result_11;
+    bool                            p101_call_result_12;
+    int                             p101_expression_result_13;
+    int                             p101_call_result_14;
+    int                             p101_call_result_15;
+    int                             p101_expression_result_16;
+    bool                            p101_call_result_17;
+    int                             p101_expression_result_18;
+    int                             p101_expression_result_19;
+    int                             p101_call_result_20;
+    int                             p101_call_result_21;
+    int                             p101_expression_result_22;
+    int                             p101_expression_result_23;
+    bool                            p101_call_result_24;
+    int                             p101_expression_result_25;
+    int                             p101_call_result_26;
+    bool                            p101_call_result_9;
+    bool                            p101_call_result_1;
+    void                           *p101_call_result_2;
+    bool                            p101_call_result_3;
+    bool                            p101_call_result_4;
+    void                           *p101_call_result_5;
+    bool                            p101_call_result_6;
+    int                             p101_call_result_7;
+    const char                     *p101_call_result_8;
     struct p101_error              *err;
     struct p101_env                *env;
     struct p101_mutation_arguments  arguments;
@@ -54,16 +80,85 @@ int main(int argc, char *argv[])
     bool                            timed_out;
     int                             return_value;
 
-    err          = p101_error_create(false);
-    env          = p101_env_create(err, NULL);
-    return_value = P101_MUTATION_EXIT_TROUBLE;
-    if(!p101_mutation_parse_arguments(env, err, argc, argv, &arguments))
+    err                = p101_error_create(false);
+    env                = p101_env_create(err, NULL);
+    return_value       = P101_MUTATION_EXIT_TROUBLE;
+    p101_call_result_1 = p101_mutation_parse_arguments(env, err, argc, argv, &arguments);
+    if(!p101_call_result_1)
     {
-        if(p101_error_has_no_error(err) && argc == 2 && (p101_strcmp(env, argv[1], "-h") == 0 || p101_strcmp(env, argv[1], "--help") == 0))
+        p101_call_result_12       = p101_error_has_no_error(err);
+        p101_expression_result_11 = 0;
+        if(p101_call_result_12)
+        {
+            if(argc == 2)
+            {
+                p101_expression_result_11 = 1;
+            }
+        }
+        p101_expression_result_10 = 0;
+        if(p101_expression_result_11)
+        {
+            p101_call_result_14 = p101_strcmp(env, argv[1], "-h");
+            if(p101_call_result_14 == 0)
+            {
+                p101_expression_result_13 = 1;
+            }
+            else
+            {
+                p101_call_result_15 = p101_strcmp(env, argv[1], "--help");
+                if(p101_call_result_15 == 0)
+                {
+                    p101_expression_result_13 = 1;
+                }
+                else
+                {
+                    p101_expression_result_13 = 0;
+                }
+            }
+            if(p101_expression_result_13)
+            {
+                p101_expression_result_10 = 1;
+            }
+        }
+        if(p101_expression_result_10)
         {
             return_value = EXIT_SUCCESS;
         }
-        if(p101_error_has_no_error(err) && !(argc == 2 && (p101_strcmp(env, argv[1], "-h") == 0 || p101_strcmp(env, argv[1], "--help") == 0)))
+        p101_call_result_17       = p101_error_has_no_error(err);
+        p101_expression_result_16 = 0;
+        if(p101_call_result_17)
+        {
+            p101_expression_result_18 = 0;
+            if(argc == 2)
+            {
+                p101_call_result_20 = p101_strcmp(env, argv[1], "-h");
+                if(p101_call_result_20 == 0)
+                {
+                    p101_expression_result_19 = 1;
+                }
+                else
+                {
+                    p101_call_result_21 = p101_strcmp(env, argv[1], "--help");
+                    if(p101_call_result_21 == 0)
+                    {
+                        p101_expression_result_19 = 1;
+                    }
+                    else
+                    {
+                        p101_expression_result_19 = 0;
+                    }
+                }
+                if(p101_expression_result_19)
+                {
+                    p101_expression_result_18 = 1;
+                }
+            }
+            if(!p101_expression_result_18)
+            {
+                p101_expression_result_16 = 1;
+            }
+        }
+        if(p101_expression_result_16)
         {
             p101_mutation_usage(env, err, argv[0], P101_MUTATION_EXIT_TROUBLE);
         }
@@ -73,7 +168,8 @@ int main(int argc, char *argv[])
     p101_memset(env, &scan_options, 0, sizeof(scan_options));
     candidates.arguments = &arguments;
     candidates.capacity  = arguments.max_mutants;
-    candidates.items     = (struct p101_mutation_candidate *)p101_calloc(env, err, candidates.capacity, sizeof(*candidates.items));
+    p101_call_result_2   = p101_calloc(env, err, candidates.capacity, sizeof(*candidates.items));
+    candidates.items     = (struct p101_mutation_candidate *)p101_call_result_2;
     if(candidates.items == NULL)
     {
         goto cleanup_candidates;
@@ -82,15 +178,17 @@ int main(int argc, char *argv[])
     scan_options.paths                 = &arguments.project;
     scan_options.path_count            = 1U;
     scan_options.compile_database_only = true;
-    if(!p101_c_analysis_scan(env, err, &scan_options, p101_mutation_candidate_observer, &candidates))
+    p101_call_result_3                 = p101_c_analysis_scan(env, err, &scan_options, p101_mutation_candidate_observer, &candidates);
+    if(!p101_call_result_3)
     {
         goto cleanup_candidates;
     }
     if(arguments.list_only)
     {
         p101_mutation_list_candidates(env, err, &arguments, &candidates);
-        return_value = EXIT_SUCCESS;
-        if(p101_error_has_error(err))
+        return_value       = EXIT_SUCCESS;
+        p101_call_result_4 = p101_error_has_error(err);
+        if(p101_call_result_4)
         {
             return_value = P101_MUTATION_EXIT_TROUBLE;
         }
@@ -107,7 +205,38 @@ int main(int argc, char *argv[])
     }
 
     baseline = p101_mutation_run_command(env, err, arguments.test_command, arguments.project, arguments.timeout, &timed_out);
-    if(timed_out || baseline != 0 || p101_error_has_error(err))
+    if(timed_out)
+    {
+        p101_expression_result_23 = 1;
+    }
+    else
+    {
+        if(baseline != 0)
+        {
+            p101_expression_result_23 = 1;
+        }
+        else
+        {
+            p101_expression_result_23 = 0;
+        }
+    }
+    if(p101_expression_result_23)
+    {
+        p101_expression_result_22 = 1;
+    }
+    else
+    {
+        p101_call_result_24 = p101_error_has_error(err);
+        if(p101_call_result_24)
+        {
+            p101_expression_result_22 = 1;
+        }
+        else
+        {
+            p101_expression_result_22 = 0;
+        }
+    }
+    if(p101_expression_result_22)
     {
         const char *reason;
 
@@ -119,14 +248,16 @@ int main(int argc, char *argv[])
         p101_fprintf(env, err, stderr, "p101-mutation-check: baseline test command %s\n", reason);
         goto cleanup_candidates;
     }
-    results = (struct p101_mutation_result *)p101_calloc(env, err, candidates.count, sizeof(*results));
+    p101_call_result_5 = p101_calloc(env, err, candidates.count, sizeof(*results));
+    results            = (struct p101_mutation_result *)p101_call_result_5;
     if(results == NULL)
     {
         goto cleanup_candidates;
     }
     for(index = 0U; index < candidates.count; index++)
     {
-        if(!p101_mutation_execute(env, err, &arguments, &candidates.items[index], &results[index]))
+        p101_call_result_6 = p101_mutation_execute(env, err, &arguments, &candidates.items[index], &results[index]);
+        if(!p101_call_result_6)
         {
             p101_free(env, results);
             goto cleanup_candidates;
@@ -136,11 +267,21 @@ int main(int argc, char *argv[])
     return_value = EXIT_SUCCESS;
     for(index = 0U; index < candidates.count; index++)
     {
-        if(p101_strcmp(env, results[index].outcome, "inconclusive") == 0)
+        p101_call_result_7        = p101_strcmp(env, results[index].outcome, "inconclusive");
+        p101_call_result_26       = p101_strcmp(env, results[index].outcome, "survived");
+        p101_expression_result_25 = 0;
+        if(p101_call_result_26 == 0)
+        {
+            if(return_value == EXIT_SUCCESS)
+            {
+                p101_expression_result_25 = 1;
+            }
+        }
+        if(p101_call_result_7 == 0)
         {
             return_value = P101_MUTATION_EXIT_TROUBLE;
         }
-        else if(p101_strcmp(env, results[index].outcome, "survived") == 0 && return_value == EXIT_SUCCESS)
+        else if(p101_expression_result_25)
         {
             return_value = P101_MUTATION_EXIT_FINDINGS;
         }
@@ -150,12 +291,16 @@ int main(int argc, char *argv[])
 cleanup_candidates:
     p101_mutation_destroy_candidates(env, &candidates);
 done:
-    if(p101_error_has_error(err))
+{
+    p101_call_result_9 = p101_error_has_error(err);
+    if(p101_call_result_9)
     {
         /* P101_ERROR_OPTIONAL rationale: diagnostic output must not overwrite the reported failure. */
-        p101_fprintf(env, P101_ERROR_OPTIONAL, stderr, "p101-mutation-check: %s\n", p101_error_get_message(err));
+        p101_call_result_8 = p101_error_get_message(err);
+        p101_fprintf(env, P101_ERROR_OPTIONAL, stderr, "p101-mutation-check: %s\n", p101_call_result_8);
         return_value = P101_MUTATION_EXIT_TROUBLE;
     }
+}
     p101_env_destroy(env);
     p101_error_destroy(err);
     return return_value;

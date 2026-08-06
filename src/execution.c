@@ -75,8 +75,10 @@ static void   spawn_arguments_destroy(const struct p101_env *env, char **argumen
 
 static char **process_environment(void)
 {
+    char ***p101_call_result_1;
 #ifdef __APPLE__
-    return *_NSGetEnviron();
+    p101_call_result_1 = _NSGetEnviron();
+    return *p101_call_result_1;
 #else
     return environ;
 #endif
@@ -84,9 +86,12 @@ static char **process_environment(void)
 
 static char **spawn_arguments(const struct p101_env *env, struct p101_error *err, char *const command[], const char *directory)
 {
+    void  *p101_call_result_2;
+    bool   p101_call_result_3;
     char **arguments;
     size_t command_count;
     size_t index;
+    bool   no_error;
 
     arguments     = NULL;
     command_count = 0U;
@@ -94,17 +99,24 @@ static char **spawn_arguments(const struct p101_env *env, struct p101_error *err
     {
         command_count++;
     }
-    arguments = (char **)p101_calloc(env, err, command_count + SPAWN_ALLOCATION_OVERHEAD, sizeof(*arguments));
+    p101_call_result_2 = p101_calloc(env, err, command_count + SPAWN_ALLOCATION_OVERHEAD, sizeof(*arguments));
+    arguments          = (char **)p101_call_result_2;
     if(arguments == NULL)
     {
         goto done;
     }
-    for(index = 0U; index < SPAWN_PREFIX_COUNT && p101_error_has_no_error(err); index++)
+    for(index = 0U; index < SPAWN_PREFIX_COUNT; index++)
     {
+        no_error = p101_error_has_no_error(err);
+        if(!no_error)
+        {
+            break;
+        }
         arguments[index] = p101_mutation_copy_text(env, err, SPAWN_PREFIX[index]);
     }
     arguments[SPAWN_DIRECTORY_INDEX] = p101_mutation_copy_text(env, err, directory);
-    if(p101_error_has_error(err))
+    p101_call_result_3               = p101_error_has_error(err);
+    if(p101_call_result_3)
     {
         spawn_arguments_destroy(env, arguments);
         arguments = NULL;
@@ -131,19 +143,29 @@ static void spawn_arguments_destroy(const struct p101_env *env, char **arguments
 
 static bool command_observer(const struct p101_env *env, struct p101_error *err, const struct p101_c_compile_command *command, void *context)
 {
+    void                *p101_call_result_4;
+    bool                 p101_call_result_5;
     struct command_copy *copy;
     size_t               index;
+    bool                 no_error;
 
     P101_TRACE_SCOPE(env);
     copy                 = (struct command_copy *)context;
     copy->directory      = p101_mutation_copy_text(env, err, command->directory);
     copy->argument_count = command->argument_count;
-    copy->arguments      = (char **)p101_calloc(env, err, command->argument_count + 2U, sizeof(*copy->arguments));
-    for(index = 0U; index < command->argument_count && p101_error_has_no_error(err); index++)
+    p101_call_result_4   = p101_calloc(env, err, command->argument_count + 2U, sizeof(*copy->arguments));
+    copy->arguments      = (char **)p101_call_result_4;
+    for(index = 0U; index < command->argument_count; index++)
     {
+        no_error = p101_error_has_no_error(err);
+        if(!no_error)
+        {
+            break;
+        }
         copy->arguments[index] = p101_mutation_copy_text(env, err, command->arguments[index]);
     }
-    return p101_error_has_no_error(err);
+    p101_call_result_5 = p101_error_has_no_error(err);
+    return p101_call_result_5;
 }
 
 static void destroy_command(const struct p101_env *env, struct command_copy *command)
@@ -161,37 +183,173 @@ static void destroy_command(const struct p101_env *env, struct command_copy *com
 
 static bool compile_option_takes_value(const struct p101_env *env, const char *argument)
 {
+    int  p101_expression_result_18;
+    int  p101_expression_result_19;
+    int  p101_expression_result_20;
+    int  p101_call_result_21;
+    int  p101_call_result_22;
+    int  p101_call_result_23;
+    int  p101_call_result_24;
     bool takes_value;
 
     P101_TRACE_SCOPE(env);
-    takes_value = (p101_strcmp(env, argument, "-o") == 0 || p101_strcmp(env, argument, "-MF") == 0 || p101_strcmp(env, argument, "-MT") == 0 || p101_strcmp(env, argument, "-MQ") == 0) != 0;
+    p101_call_result_21 = p101_strcmp(env, argument, "-o");
+    if(p101_call_result_21 == 0)
+    {
+        p101_expression_result_20 = 1;
+    }
+    else
+    {
+        p101_call_result_22 = p101_strcmp(env, argument, "-MF");
+        if(p101_call_result_22 == 0)
+        {
+            p101_expression_result_20 = 1;
+        }
+        else
+        {
+            p101_expression_result_20 = 0;
+        }
+    }
+    if(p101_expression_result_20)
+    {
+        p101_expression_result_19 = 1;
+    }
+    else
+    {
+        p101_call_result_23 = p101_strcmp(env, argument, "-MT");
+        if(p101_call_result_23 == 0)
+        {
+            p101_expression_result_19 = 1;
+        }
+        else
+        {
+            p101_expression_result_19 = 0;
+        }
+    }
+    if(p101_expression_result_19)
+    {
+        p101_expression_result_18 = 1;
+    }
+    else
+    {
+        p101_call_result_24 = p101_strcmp(env, argument, "-MQ");
+        if(p101_call_result_24 == 0)
+        {
+            p101_expression_result_18 = 1;
+        }
+        else
+        {
+            p101_expression_result_18 = 0;
+        }
+    }
+    takes_value = p101_expression_result_18 != 0;
     return takes_value;
 }
 
 static bool is_compile_output_option(const struct p101_env *env, const char *argument)
 {
+    int  p101_expression_result_25;
+    int  p101_expression_result_26;
+    int  p101_expression_result_27;
+    int  p101_expression_result_28;
+    int  p101_expression_result_29;
+    int  p101_call_result_30;
+    int  p101_call_result_31;
+    int  p101_call_result_32;
+    int  p101_call_result_33;
     bool is_output;
 
     P101_TRACE_SCOPE(env);
-    is_output = ((argument[0] == '-' && argument[1] == 'o' && p101_strcmp(env, argument, "-ObjC") != 0) || p101_strncmp(env, argument, "-MF", sizeof("-MF") - 1U) == 0 || p101_strncmp(env, argument, "-MT", sizeof("-MT") - 1U) == 0 ||
-                 p101_strncmp(env, argument, "-MQ", sizeof("-MQ") - 1U) == 0) != 0;
+    p101_expression_result_29 = 0;
+    if(argument[0] == '-')
+    {
+        if(argument[1] == 'o')
+        {
+            p101_expression_result_29 = 1;
+        }
+    }
+    p101_expression_result_28 = 0;
+    if(p101_expression_result_29)
+    {
+        p101_call_result_30 = p101_strcmp(env, argument, "-ObjC");
+        if(p101_call_result_30 != 0)
+        {
+            p101_expression_result_28 = 1;
+        }
+    }
+    if(p101_expression_result_28)
+    {
+        p101_expression_result_27 = 1;
+    }
+    else
+    {
+        p101_call_result_31 = p101_strncmp(env, argument, "-MF", sizeof("-MF") - 1U);
+        if(p101_call_result_31 == 0)
+        {
+            p101_expression_result_27 = 1;
+        }
+        else
+        {
+            p101_expression_result_27 = 0;
+        }
+    }
+    if(p101_expression_result_27)
+    {
+        p101_expression_result_26 = 1;
+    }
+    else
+    {
+        p101_call_result_32 = p101_strncmp(env, argument, "-MT", sizeof("-MT") - 1U);
+        if(p101_call_result_32 == 0)
+        {
+            p101_expression_result_26 = 1;
+        }
+        else
+        {
+            p101_expression_result_26 = 0;
+        }
+    }
+    if(p101_expression_result_26)
+    {
+        p101_expression_result_25 = 1;
+    }
+    else
+    {
+        p101_call_result_33 = p101_strncmp(env, argument, "-MQ", sizeof("-MQ") - 1U);
+        if(p101_call_result_33 == 0)
+        {
+            p101_expression_result_25 = 1;
+        }
+        else
+        {
+            p101_expression_result_25 = 0;
+        }
+    }
+    is_output = p101_expression_result_25 != 0;
     return is_output;
 }
 
 static bool build_compile_command(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_candidate *candidate, const char *copy, struct command_copy *command)
 {
+    bool                p101_call_result_6;
+    void               *p101_call_result_7;
+    int                 p101_call_result_8;
+    bool                p101_call_result_9;
+    bool                p101_call_result_10;
     struct command_copy source;
     const char         *canonical_project;
     char                project_path[P101_MUTATION_PATH_SIZE];
     size_t              read_index;
     size_t              write_index;
     bool                success;
+    bool                no_error;
 
     P101_TRACE_SCOPE(env);
     p101_memset(env, &source, 0, sizeof(source));
     p101_memset(env, command, 0, sizeof(*command));
-    success = false;
-    if(!p101_c_facts_with_compile_command(env, err, arguments->compile_database, candidate->path, command_observer, &source))
+    success            = false;
+    p101_call_result_6 = p101_c_facts_with_compile_command(env, err, arguments->compile_database, candidate->path, command_observer, &source);
+    if(!p101_call_result_6)
     {
         goto done;
     }
@@ -200,24 +358,33 @@ static bool build_compile_command(const struct p101_env *env, struct p101_error 
     {
         goto done;
     }
-    command->arguments = (char **)p101_calloc(env, err, source.argument_count + 2U, sizeof(*command->arguments));
+    p101_call_result_7 = p101_calloc(env, err, source.argument_count + 2U, sizeof(*command->arguments));
+    command->arguments = (char **)p101_call_result_7;
     command->directory = p101_mutation_rewrite_path(env, err, project_path, copy, source.directory);
     write_index        = 0U;
-    for(read_index = 0U; read_index < source.argument_count && p101_error_has_no_error(err); read_index++)
+    for(read_index = 0U; read_index < source.argument_count; read_index++)
     {
         const char *value;
 
-        value = source.arguments[read_index];
-        if(p101_strcmp(env, value, "-c") == 0)
+        no_error = p101_error_has_no_error(err);
+        if(!no_error)
+        {
+            break;
+        }
+        value              = source.arguments[read_index];
+        p101_call_result_8 = p101_strcmp(env, value, "-c");
+        if(p101_call_result_8 == 0)
         {
             continue;
         }
-        if(compile_option_takes_value(env, value))
+        p101_call_result_9 = compile_option_takes_value(env, value);
+        if(p101_call_result_9)
         {
             read_index++;
             continue;
         }
-        if(is_compile_output_option(env, value))
+        p101_call_result_10 = is_compile_output_option(env, value);
+        if(p101_call_result_10)
         {
             continue;
         }
@@ -234,6 +401,12 @@ done:
 
 int p101_mutation_run_command(const struct p101_env *env, struct p101_error *err, char **command, const char *directory, double timeout, bool *timed_out)
 {
+    int             p101_expression_result_34;
+    bool            p101_call_result_35;
+    int             p101_expression_result_36;
+    bool            p101_call_result_37;
+    int             p101_call_result_11;
+    char          **p101_call_result_12;
     char          **child_arguments;
     const char     *child_file;
     pid_t           child;
@@ -253,11 +426,29 @@ int p101_mutation_run_command(const struct p101_env *env, struct p101_error *err
         child_arguments = spawn_arguments(env, err, command, directory);
         child_file      = "sh";
     }
-    if(child_arguments == NULL || p101_error_has_error(err))
+    if(child_arguments == NULL)
+    {
+        p101_expression_result_34 = 1;
+    }
+    else
+    {
+        p101_call_result_35 = p101_error_has_error(err);
+        if(p101_call_result_35)
+        {
+            p101_expression_result_34 = 1;
+        }
+        else
+        {
+            p101_expression_result_34 = 0;
+        }
+    }
+    if(p101_expression_result_34)
     {
         goto done;
     }
-    if(p101_posix_spawnp(env, err, &child, child_file, NULL, NULL, child_arguments, process_environment()) != 0)
+    p101_call_result_12 = process_environment();
+    p101_call_result_11 = p101_posix_spawnp(env, err, &child, child_file, NULL, NULL, child_arguments, p101_call_result_12);
+    if(p101_call_result_11 != 0)
     {
         if(child_arguments != command)
         {
@@ -282,7 +473,23 @@ int p101_mutation_run_command(const struct p101_env *env, struct p101_error *err
         {
             break;
         }
-        if(waited < 0 || p101_error_has_error(err))
+        if(waited < 0)
+        {
+            p101_expression_result_36 = 1;
+        }
+        else
+        {
+            p101_call_result_37 = p101_error_has_error(err);
+            if(p101_call_result_37)
+            {
+                p101_expression_result_36 = 1;
+            }
+            else
+            {
+                p101_expression_result_36 = 0;
+            }
+        }
+        if(p101_expression_result_36)
         {
             goto done;
         }
@@ -312,6 +519,11 @@ done:
 
 bool p101_mutation_execute(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_candidate *candidate, struct p101_mutation_result *result)
 {
+    char               *p101_call_result_13;
+    char               *p101_call_result_14;
+    void               *p101_call_result_15;
+    bool                p101_call_result_16;
+    bool                p101_call_result_17;
     char                temp[] = "/tmp/p101-mutation-check.XXXXXX";
     char                copy[P101_MUTATION_PATH_SIZE];
     struct command_copy compile_command;
@@ -323,20 +535,23 @@ bool p101_mutation_execute(const struct p101_env *env, struct p101_error *err, c
     bool                success;
     bool                temp_created;
     bool                completed;
+    bool                no_error;
 
     P101_TRACE_SCOPE(env);
     p101_memset(env, result, 0, sizeof(*result));
     p101_memset(env, &compile_command, 0, sizeof(compile_command));
-    result->candidate = candidate;
-    test_command      = NULL;
-    temp_created      = false;
-    completed         = false;
-    if(p101_mkdtemp(env, err, temp) == NULL)
+    result->candidate   = candidate;
+    test_command        = NULL;
+    temp_created        = false;
+    completed           = false;
+    p101_call_result_13 = p101_mkdtemp(env, err, temp);
+    if(p101_call_result_13 == NULL)
     {
         goto cleanup;
     }
-    temp_created = true;
-    if(p101_realpath(env, err, arguments->project, canonical_project) == NULL)
+    temp_created        = true;
+    p101_call_result_14 = p101_realpath(env, err, arguments->project, canonical_project);
+    if(p101_call_result_14 == NULL)
     {
         goto cleanup;
     }
@@ -363,12 +578,19 @@ bool p101_mutation_execute(const struct p101_env *env, struct p101_error *err, c
         completed           = true;
         goto cleanup;
     }
-    test_command = (char **)p101_calloc(env, err, arguments->test_command_count + 1U, sizeof(*test_command));
-    for(index = 0U; index < arguments->test_command_count && p101_error_has_no_error(err); index++)
+    p101_call_result_15 = p101_calloc(env, err, arguments->test_command_count + 1U, sizeof(*test_command));
+    test_command        = (char **)p101_call_result_15;
+    for(index = 0U; index < arguments->test_command_count; index++)
     {
+        no_error = p101_error_has_no_error(err);
+        if(!no_error)
+        {
+            break;
+        }
         test_command[index] = p101_mutation_rewrite_path(env, err, canonical_project, copy, arguments->test_command[index]);
     }
-    if(p101_error_has_error(err))
+    p101_call_result_16 = p101_error_has_error(err);
+    if(p101_call_result_16)
     {
         goto cleanup;
     }
@@ -398,7 +620,8 @@ cleanup:
     destroy_command(env, &compile_command);
     if(temp_created)
     {
-        (void)p101_mutation_remove_tree(env, temp);
+        p101_call_result_17 = p101_mutation_remove_tree(env, temp);
+        (void)p101_call_result_17;
     }
     return completed;
 }
