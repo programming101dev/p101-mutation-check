@@ -267,11 +267,11 @@ int p101_mutation_run_command(const struct p101_env *env, struct p101_error *err
         if(elapsed >= timeout)
         {
             *timed_out = true;
-            p101_kill(env, NULL, child, SIGKILL);          // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: best-effort timeout cleanup.
-            p101_waitpid(env, NULL, child, &status, 0);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: best-effort timeout cleanup.
+            p101_kill(env, P101_ERROR_OPTIONAL, child, SIGKILL);          // P101_ERROR_OPTIONAL rationale: best-effort timeout cleanup.
+            p101_waitpid(env, P101_ERROR_OPTIONAL, child, &status, 0);    // P101_ERROR_OPTIONAL rationale: best-effort timeout cleanup.
             goto done;
         }
-        p101_nanosleep(env, NULL, &pause_time, NULL);    // P101_ERROR_CONTRACT_ALLOW_NO_ERROR: an interrupted poll simply retries.
+        p101_nanosleep(env, P101_ERROR_OPTIONAL, &pause_time, NULL);    // P101_ERROR_OPTIONAL rationale: an interrupted poll simply retries.
     }
     if(WIFEXITED(status))
     {

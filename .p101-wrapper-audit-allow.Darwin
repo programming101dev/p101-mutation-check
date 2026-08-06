@@ -1,4 +1,4 @@
 # posix_spawnp requires an explicit environment vector. macOS exposes the
 # process environment through _NSGetEnviron rather than a portable function;
 # keep that platform boundary isolated in process_environment().
-src/execution.c:process_environment:_NSGetEnviron
+src/execution.c		c:@F@_NSGetEnviron

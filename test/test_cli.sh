@@ -73,8 +73,8 @@ JSON
     --operator arithmetic-operator --list "$work" |
     grep -q 'arithmetic-operator'
 "$tool" --compile-db "$work/compile_commands.json" \
-    --operator skip-cleanup --list "$work" |
-    grep -q 'skip-cleanup'
+    --operator skip-call --list "$work" |
+    grep -q 'skip-call'
 
 output=$("$tool" --compile-db "$work/compile_commands.json" \
     --operator comparison-boundary --max-mutants 1 "$work" -- bash "$work/run-test.sh")

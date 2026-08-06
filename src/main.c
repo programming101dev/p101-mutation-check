@@ -128,8 +128,8 @@ cleanup_candidates:
 done:
     if(p101_error_has_error(err))
     {
-        /* P101_ERROR_CONTRACT_ALLOW_NO_ERROR: diagnostic output must not overwrite the reported failure. */
-        p101_fprintf(env, NULL, stderr, "p101-mutation-check: %s\n", p101_error_get_message(err));
+        /* P101_ERROR_OPTIONAL rationale: diagnostic output must not overwrite the reported failure. */
+        p101_fprintf(env, P101_ERROR_OPTIONAL, stderr, "p101-mutation-check: %s\n", p101_error_get_message(err));
         return_value = P101_MUTATION_EXIT_TROUBLE;
     }
     p101_env_destroy(env);
