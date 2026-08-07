@@ -75,8 +75,9 @@ static void   spawn_arguments_destroy(const struct p101_env *env, char **argumen
 
 static char **process_environment(void)
 {
-    char ***p101_call_result_1;
 #ifdef __APPLE__
+    char ***p101_call_result_1;
+
     p101_call_result_1 = _NSGetEnviron();
     return *p101_call_result_1;
 #else
