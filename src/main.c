@@ -59,7 +59,6 @@ int main(int argc, char *argv[])
     int                             p101_expression_result_23;
     bool                            p101_call_result_24;
     int                             p101_expression_result_25;
-    int                             p101_call_result_26;
     bool                            p101_call_result_9;
     bool                            p101_call_result_1;
     void                           *p101_call_result_2;
@@ -67,7 +66,6 @@ int main(int argc, char *argv[])
     bool                            p101_call_result_4;
     void                           *p101_call_result_5;
     bool                            p101_call_result_6;
-    int                             p101_call_result_7;
     const char                     *p101_call_result_8;
     struct p101_error              *err;
     struct p101_env                *env;
@@ -267,17 +265,15 @@ int main(int argc, char *argv[])
     return_value = EXIT_SUCCESS;
     for(index = 0U; index < candidates.count; index++)
     {
-        p101_call_result_7        = p101_strcmp(env, results[index].outcome, "inconclusive");
-        p101_call_result_26       = p101_strcmp(env, results[index].outcome, "survived");
         p101_expression_result_25 = 0;
-        if(p101_call_result_26 == 0)
+        if(results[index].outcome == P101_MUTATION_OUTCOME_SURVIVED)
         {
             if(return_value == EXIT_SUCCESS)
             {
                 p101_expression_result_25 = 1;
             }
         }
-        if(p101_call_result_7 == 0)
+        if(results[index].outcome == P101_MUTATION_OUTCOME_INCONCLUSIVE)
         {
             return_value = P101_MUTATION_EXIT_TROUBLE;
         }

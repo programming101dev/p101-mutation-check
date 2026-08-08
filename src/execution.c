@@ -148,7 +148,6 @@ static bool command_observer(const struct p101_env *env, struct p101_error *err,
     bool                 p101_call_result_5;
     struct command_copy *copy;
     size_t               index;
-    bool                 no_error;
 
     P101_TRACE_SCOPE(env);
     copy                 = (struct command_copy *)context;
@@ -158,6 +157,8 @@ static bool command_observer(const struct p101_env *env, struct p101_error *err,
     copy->arguments      = (char **)p101_call_result_4;
     for(index = 0U; index < command->argument_count; index++)
     {
+        bool no_error;
+
         no_error = p101_error_has_no_error(err);
         if(!no_error)
         {
@@ -188,9 +189,6 @@ static bool compile_option_takes_value(const struct p101_env *env, const char *a
     int  p101_expression_result_19;
     int  p101_expression_result_20;
     int  p101_call_result_21;
-    int  p101_call_result_22;
-    int  p101_call_result_23;
-    int  p101_call_result_24;
     bool takes_value;
 
     P101_TRACE_SCOPE(env);
@@ -201,6 +199,8 @@ static bool compile_option_takes_value(const struct p101_env *env, const char *a
     }
     else
     {
+        int p101_call_result_22;
+
         p101_call_result_22 = p101_strcmp(env, argument, "-MF");
         if(p101_call_result_22 == 0)
         {
@@ -217,6 +217,8 @@ static bool compile_option_takes_value(const struct p101_env *env, const char *a
     }
     else
     {
+        int p101_call_result_23;
+
         p101_call_result_23 = p101_strcmp(env, argument, "-MT");
         if(p101_call_result_23 == 0)
         {
@@ -233,6 +235,8 @@ static bool compile_option_takes_value(const struct p101_env *env, const char *a
     }
     else
     {
+        int p101_call_result_24;
+
         p101_call_result_24 = p101_strcmp(env, argument, "-MQ");
         if(p101_call_result_24 == 0)
         {
@@ -254,10 +258,6 @@ static bool is_compile_output_option(const struct p101_env *env, const char *arg
     int  p101_expression_result_27;
     int  p101_expression_result_28;
     int  p101_expression_result_29;
-    int  p101_call_result_30;
-    int  p101_call_result_31;
-    int  p101_call_result_32;
-    int  p101_call_result_33;
     bool is_output;
 
     P101_TRACE_SCOPE(env);
@@ -272,6 +272,8 @@ static bool is_compile_output_option(const struct p101_env *env, const char *arg
     p101_expression_result_28 = 0;
     if(p101_expression_result_29)
     {
+        int p101_call_result_30;
+
         p101_call_result_30 = p101_strcmp(env, argument, "-ObjC");
         if(p101_call_result_30 != 0)
         {
@@ -284,6 +286,8 @@ static bool is_compile_output_option(const struct p101_env *env, const char *arg
     }
     else
     {
+        int p101_call_result_31;
+
         p101_call_result_31 = p101_strncmp(env, argument, "-MF", sizeof("-MF") - 1U);
         if(p101_call_result_31 == 0)
         {
@@ -300,6 +304,8 @@ static bool is_compile_output_option(const struct p101_env *env, const char *arg
     }
     else
     {
+        int p101_call_result_32;
+
         p101_call_result_32 = p101_strncmp(env, argument, "-MT", sizeof("-MT") - 1U);
         if(p101_call_result_32 == 0)
         {
@@ -316,6 +322,8 @@ static bool is_compile_output_option(const struct p101_env *env, const char *arg
     }
     else
     {
+        int p101_call_result_33;
+
         p101_call_result_33 = p101_strncmp(env, argument, "-MQ", sizeof("-MQ") - 1U);
         if(p101_call_result_33 == 0)
         {
@@ -518,10 +526,26 @@ done:
     return result;
 }
 
+const char *p101_mutation_outcome_name(enum p101_mutation_outcome outcome)
+{
+    const char *name;
+
+    name = "inconclusive";
+    if(outcome == P101_MUTATION_OUTCOME_SURVIVED)
+    {
+        name = "survived";
+    }
+    else if(outcome == P101_MUTATION_OUTCOME_KILLED)
+    {
+        name = "killed";
+    }
+    return name;
+}
+
 bool p101_mutation_execute(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_candidate *candidate, struct p101_mutation_result *result)
 {
-    char               *p101_call_result_13;
-    char               *p101_call_result_14;
+    const char         *p101_call_result_13;
+    const char         *p101_call_result_14;
     void               *p101_call_result_15;
     bool                p101_call_result_16;
     bool                p101_call_result_17;
@@ -573,7 +597,7 @@ bool p101_mutation_execute(const struct p101_env *env, struct p101_error *err, c
     status = p101_mutation_run_command(env, err, compile_command.arguments, compile_command.directory, arguments->timeout, &timed_out);
     if(timed_out || status != 0)
     {
-        result->outcome     = "inconclusive";
+        result->outcome     = P101_MUTATION_OUTCOME_INCONCLUSIVE;
         result->return_code = status;
         result->timed_out   = timed_out;
         completed           = true;
@@ -600,15 +624,15 @@ bool p101_mutation_execute(const struct p101_env *env, struct p101_error *err, c
     result->timed_out   = timed_out;
     if(timed_out)
     {
-        result->outcome = "inconclusive";
+        result->outcome = P101_MUTATION_OUTCOME_INCONCLUSIVE;
     }
     else if(status == 0)
     {
-        result->outcome = "survived";
+        result->outcome = P101_MUTATION_OUTCOME_SURVIVED;
     }
     else
     {
-        result->outcome = "killed";
+        result->outcome = P101_MUTATION_OUTCOME_KILLED;
     }
     completed = true;
 

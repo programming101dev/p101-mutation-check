@@ -55,16 +55,10 @@ static void json_string(const struct p101_env *env, struct p101_error *err, FILE
 
 void p101_mutation_report_results(const struct p101_env *env, struct p101_error *err, const struct p101_mutation_arguments *arguments, const struct p101_mutation_result results[], size_t result_count)
 {
-    int         p101_call_result_9;
-    int         p101_call_result_2;
-    int         p101_call_result_3;
-    const char *p101_call_result_4;
-    int         p101_call_result_5;
-    const char *p101_call_result_6;
-    size_t      index;
-    size_t      killed;
-    size_t      survived;
-    size_t      inconclusive;
+    size_t index;
+    size_t killed;
+    size_t survived;
+    size_t inconclusive;
 
     P101_TRACE_SCOPE(env);
     killed       = 0U;
@@ -72,22 +66,17 @@ void p101_mutation_report_results(const struct p101_env *env, struct p101_error 
     inconclusive = 0U;
     for(index = 0U; index < result_count; index++)
     {
-        p101_call_result_2 = p101_strcmp(env, results[index].outcome, "killed");
-        if(p101_call_result_2 == 0)
+        if(results[index].outcome == P101_MUTATION_OUTCOME_KILLED)
         {
             killed++;
         }
+        else if(results[index].outcome == P101_MUTATION_OUTCOME_SURVIVED)
+        {
+            survived++;
+        }
         else
         {
-            p101_call_result_9 = p101_strcmp(env, results[index].outcome, "survived");
-            if(p101_call_result_9 == 0)
-            {
-                survived++;
-            }
-            else
-            {
-                inconclusive++;
-            }
+            inconclusive++;
         }
     }
     if(arguments->json)
@@ -99,9 +88,9 @@ void p101_mutation_report_results(const struct p101_env *env, struct p101_error 
         for(index = 0U; index < result_count; index++)
         {
             const struct p101_mutation_candidate *candidate;
+            const char                           *p101_call_result_4;
 
-            p101_call_result_3 = p101_strcmp(env, results[index].outcome, "survived");
-            if(p101_call_result_3 != 0)
+            if(results[index].outcome != P101_MUTATION_OUTCOME_SURVIVED)
             {
                 continue;
             }
@@ -146,15 +135,17 @@ void p101_mutation_report_results(const struct p101_env *env, struct p101_error 
         for(index = 0U; index < result_count; index++)
         {
             const struct p101_mutation_candidate *candidate;
+            const char                           *p101_call_result_6;
+            const char                           *p101_call_result_10;
 
-            p101_call_result_5 = p101_strcmp(env, results[index].outcome, "survived");
-            if(p101_call_result_5 != 0)
+            if(results[index].outcome != P101_MUTATION_OUTCOME_SURVIVED)
             {
                 continue;
             }
-            candidate          = results[index].candidate;
-            p101_call_result_6 = p101_c_mutation_kind_name(candidate->kind);
-            p101_fprintf(env, err, stdout, "P101-MUTATION-001: %s:%zu: survived %s: %s -> %s\n", candidate->path, candidate->line, p101_call_result_6, candidate->original, candidate->replacement);
+            candidate           = results[index].candidate;
+            p101_call_result_10 = p101_mutation_outcome_name(results[index].outcome);
+            p101_call_result_6  = p101_c_mutation_kind_name(candidate->kind);
+            p101_fprintf(env, err, stdout, "P101-MUTATION-001: %s:%zu: %s %s: %s -> %s\n", candidate->path, candidate->line, p101_call_result_10, p101_call_result_6, candidate->original, candidate->replacement);
         }
         p101_fprintf(env,
                      err,

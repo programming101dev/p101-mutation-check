@@ -168,13 +168,44 @@ static bool parse_timeout(const struct p101_env *env, struct p101_error *err, co
     return valid;
 }
 
+static void raise_unknown_operator(const struct p101_env *env, struct p101_error *err, const char *name)
+{
+    char   names[P101_MUTATION_MESSAGE_SIZE];
+    char   message[P101_MUTATION_MESSAGE_SIZE];
+    size_t used;
+    int    value;
+
+    P101_TRACE_SCOPE(env);
+    names[0] = '\0';
+    used     = 0U;
+    for(value = P101_C_MUTATION_NONE; value <= P101_C_MUTATION_SKIP_CALL; value++)
+    {
+        const char *p101_call_result_27;
+        size_t      length;
+
+        p101_call_result_27 = p101_c_mutation_kind_name((enum p101_c_mutation_kind)value);
+        length              = p101_strlen(env, p101_call_result_27);
+        if(used + length + sizeof(", ") >= sizeof(names))
+        {
+            break;
+        }
+        if(used > 0U)
+        {
+            names[used++] = ',';
+            names[used++] = ' ';
+        }
+        p101_memcpy(env, &names[used], p101_call_result_27, length);
+        used        = used + length;
+        names[used] = '\0';
+    }
+    p101_snprintf(env, err, message, sizeof(message), "The mutation operator '%s' is not known; valid operators are %s.", name, names);
+    P101_ERROR_RAISE_USER(err, message, 1);
+}
+
 bool p101_mutation_parse_arguments(const struct p101_env *env, struct p101_error *err, int argc, char *argv[], struct p101_mutation_arguments *arguments)
 {
     int  p101_expression_result_15;
-    int  p101_call_result_16;
     int  p101_call_result_17;
-    int  p101_expression_result_18;
-    int  p101_call_result_19;
     int  p101_expression_result_20;
     int  p101_expression_result_21;
     int  p101_call_result_22;
@@ -184,9 +215,9 @@ bool p101_mutation_parse_arguments(const struct p101_env *env, struct p101_error
     int  p101_call_result_26;
     int  p101_call_result_5;
     int  p101_call_result_4;
-    int  p101_call_result_1;
     bool p101_call_result_2;
     bool p101_call_result_3;
+    bool p101_call_result_28;
     int  index;
     bool valid;
 
@@ -198,6 +229,10 @@ bool p101_mutation_parse_arguments(const struct p101_env *env, struct p101_error
     for(index = 1; index < argc; index++)
     {
         const char *argument;
+        int         p101_call_result_1;
+        int         p101_call_result_16;
+        int         p101_expression_result_18;
+        int         p101_call_result_19;
 
         argument           = argv[index];
         p101_call_result_1 = p101_strcmp(env, argument, "--");
@@ -264,7 +299,17 @@ bool p101_mutation_parse_arguments(const struct p101_env *env, struct p101_error
             }
             if(p101_expression_result_20)
             {
-                arguments->operators[arguments->operator_count++] = argv[++index];
+                const char *operator_name;
+
+                operator_name       = argv[++index];
+                p101_call_result_28 = p101_c_mutation_kind_from_name(env, operator_name, &arguments->operators[arguments->operator_count]);
+                if(!p101_call_result_28)
+                {
+                    raise_unknown_operator(env, err, operator_name);
+                    valid = false;
+                    break;
+                }
+                arguments->operator_count++;
             }
             else
             {

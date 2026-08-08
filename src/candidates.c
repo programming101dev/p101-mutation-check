@@ -60,10 +60,8 @@ char *p101_mutation_copy_text(const struct p101_env *env, struct p101_error *err
 
 static bool operator_selected(const struct p101_env *env, const struct p101_mutation_arguments *arguments, enum p101_c_mutation_kind kind)
 {
-    int         p101_call_result_2;
-    const char *name;
-    size_t      index;
-    bool        selected;
+    size_t index;
+    bool   selected;
 
     P101_TRACE_SCOPE(env);
     selected = arguments->operator_count == 0U;
@@ -71,11 +69,9 @@ static bool operator_selected(const struct p101_env *env, const struct p101_muta
     {
         goto done;
     }
-    name = p101_c_mutation_kind_name(kind);
     for(index = 0U; index < arguments->operator_count; index++)
     {
-        p101_call_result_2 = p101_strcmp(env, arguments->operators[index], name);
-        if(p101_call_result_2 == 0)
+        if(arguments->operators[index] == kind)
         {
             selected = true;
             break;
@@ -90,7 +86,7 @@ bool p101_mutation_candidate_observer(const struct p101_env *env, struct p101_er
 {
     int                              p101_expression_result_4;
     bool                             p101_call_result_5;
-    char                            *p101_call_result_3;
+    const char                      *p101_call_result_3;
     struct p101_mutation_candidates *candidates;
     struct p101_mutation_candidate  *candidate;
     char                             canonical_path[P101_MUTATION_PATH_SIZE];
@@ -146,11 +142,11 @@ done:
 
 void p101_mutation_destroy_candidates(const struct p101_env *env, struct p101_mutation_candidates *candidates)
 {
-    size_t index;
-
     P101_TRACE_SCOPE(env);
     if(candidates->items != NULL)
     {
+        size_t index;
+
         for(index = 0U; index < candidates->count; index++)
         {
             p101_free(env, candidates->items[index].replacement);
